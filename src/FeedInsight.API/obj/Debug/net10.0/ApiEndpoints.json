@@ -1,6 +1,32 @@
 [
   {
     "ContainingType": "FeedInsight.API.Controllers.FeedsController",
+    "Method": "GetFeeds",
+    "RelativePath": "api/Feeds",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "SearchTerm",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "Page",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "PageSize",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "FeedInsight.API.Controllers.FeedsController",
     "Method": "CreateFeed",
     "RelativePath": "api/Feeds",
     "HttpMethod": "POST",

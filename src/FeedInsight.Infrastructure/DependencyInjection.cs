@@ -1,9 +1,13 @@
 ﻿using FeedInsight.Application.Messaging;
-using FeedInsight.Infrastructure.Data.Context;
+using FeedInsight.Infrastructure.Persistence.Context;
 using FeedInsight.Infrastructure.Messaging;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using FeedInsight.Domain.Common.Interfaces;
+using FeedInsight.Infrastructure.Persistence;
+using FeedInsight.Application.Features.Feeds;
+using FeedInsight.Infrastructure.Persistence.Repositories;
 
 namespace FeedInsight.Infrastructure;
 
@@ -18,6 +22,9 @@ public static class DependencyInjection
         {
             options.UseSqlServer(configuration.GetConnectionString("DefaultConnection"));
         });
+
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<IFeedRepository, FeedRepository>();
 
         return services;
     }

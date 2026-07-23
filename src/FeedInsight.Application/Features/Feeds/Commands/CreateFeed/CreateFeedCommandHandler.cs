@@ -1,31 +1,47 @@
-﻿using FeedInsight.Application.Messaging;
-using ErrorOr;
+﻿using ErrorOr;
+using FeedInsight.Application.Messaging;
+using FeedInsight.Domain.Common.Errors;
+using FeedInsight.Domain.Feeds;
+using FeedInsight.Domain.Feeds.Enums;
+using FeedInsight.Domain.Feeds.ValueObjects;
+using static FeedInsight.Domain.Common.Errors.Errors;
 
 namespace FeedInsight.Application.Features.Feeds.Commands.CreateFeed;
 
-internal class CreateFeedCommandHandler : IRequestHandler<CreateFeedCommand, ErrorOr<Guid>>
+public class CreateFeedCommandHandler : IRequestHandler<CreateFeedCommand, ErrorOr<Guid>>
 {
     public async Task<ErrorOr<Guid>> HandleAsync(CreateFeedCommand request, CancellationToken cancellationToken = default)
     {
-        // 1. Business Logic Error: Forbidden word
+        /*
+         * 1. SYNCHRONOUS BUSINESS RULES
+         */
+
+        // Check forbidden words using centralized error
         if (request.Title.Equals("Spam", StringComparison.OrdinalIgnoreCase))
         {
-            return Error.Failure(
-                code: "Feed.InvalidTitle",
-                description: "The title cannot be 'Spam'.");
+            return Errors.Feeds.InvalidTitle;
         }
 
-        // 2. Simulated Database Check: Conflict
-        // Imagine checking a database here...
+        // Validate and Create the Value Object
+        var urlResult = FeedUrl.Create(request.Url);
+        if (urlResult.IsError)
+        {
+            // This returns the Errors.Feeds.InvalidUrl error generated inside the record!
+            return urlResult.Errors;
+        }
+
+        /*
+         * 2. ASYNCHRONOUS DATA CHECKS (Simulated)
+         */
+
+        // Simulate checking the database for uniqueness
         if (request.Title == "Existing Title")
         {
-            return Error.Conflict(
-                code: "Feed.TitleTaken",
-                description: "A feed with this title already exists.");
+            return Errors.Feeds.TitleTaken;
         }
 
-        // 3. Simulated external service failure: Unexpected
-        bool isDatabaseDown = false; // logic to check system health
+        // Simulate external service failure
+        bool isDatabaseDown = false;
         if (isDatabaseDown)
         {
             return Error.Unexpected(
@@ -33,7 +49,25 @@ internal class CreateFeedCommandHandler : IRequestHandler<CreateFeedCommand, Err
                 description: "Could not connect to the database.");
         }
 
-        // Success logic
-        return Guid.NewGuid();
+        /*
+         * 3. ENTITY CREATION AND PERSISTENCE
+         */
+
+        // Create the Entity. 
+        // Notice how we use urlResult.Value. It is GUARANTEED to be a valid URL here.
+        var feed = new Feed
+        {
+            Title = request.Title,
+            Description = request.Description,
+            Url = urlResult.Value,
+            Status = FeedStatus.Active
+        };
+
+        // TODO: In the future, this is where you will add your repository logic:
+        // await _feedRepository.AddAsync(feed, cancellationToken);
+        // await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        // 4. RETURN SUCCESS
+        return feed.Id;
     }
 }

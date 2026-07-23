@@ -1,4 +1,6 @@
-﻿using FeedInsight.Application;
+﻿using FeedInsight.API.Services;
+using FeedInsight.Application;
+using FeedInsight.Application.Common.Interfaces;
 using FeedInsight.Infrastructure;
 
 namespace FeedInsight.API;
@@ -8,6 +10,10 @@ public static class DependencyInjection
     public static IServiceCollection AddAPI(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddControllers();
+
+        services.AddHttpContextAccessor();
+
+        services.AddScoped<ICurrentUserService, CurrentUserService>();
 
         // register application and infrastructure services
         services

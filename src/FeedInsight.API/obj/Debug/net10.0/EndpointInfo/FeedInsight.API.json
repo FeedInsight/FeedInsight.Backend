@@ -6,6 +6,41 @@
   },
   "paths": {
     "/api/Feeds": {
+      "get": {
+        "tags": [
+          "Feeds"
+        ],
+        "parameters": [
+          {
+            "name": "SearchTerm",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
       "post": {
         "tags": [
           "Feeds"
@@ -46,7 +81,11 @@
             "type": "string",
             "nullable": true
           },
-          "content": {
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "url": {
             "type": "string",
             "nullable": true
           }
