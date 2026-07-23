@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("FeedInsight.Application")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+76b90da9f68720266831b7535b21d6dd5d794a4a")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+32170cdd7c86e6870c3b1faca6d8a450606321d7")]
 [assembly: System.Reflection.AssemblyProductAttribute("FeedInsight.Application")]
 [assembly: System.Reflection.AssemblyTitleAttribute("FeedInsight.Application")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -19,8 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Data\Migrations\" />
-    <Folder Include="Data\Repositories\" />
+    <Folder Include="Persistence\Migrations\" />
   </ItemGroup>
 
   <PropertyGroup>

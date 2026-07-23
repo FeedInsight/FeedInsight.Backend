@@ -10,3 +10,4 @@ S:\ITI-9Months-IDA\GraduationProject\FeedInsight.Backend\src\FeedInsight.Domain\
 S:\ITI-9Months-IDA\GraduationProject\FeedInsight.Backend\src\FeedInsight.Domain\obj\Debug\net10.0\refint\FeedInsight.Domain.dll
 S:\ITI-9Months-IDA\GraduationProject\FeedInsight.Backend\src\FeedInsight.Domain\obj\Debug\net10.0\FeedInsight.Domain.pdb
 S:\ITI-9Months-IDA\GraduationProject\FeedInsight.Backend\src\FeedInsight.Domain\obj\Debug\net10.0\ref\FeedInsight.Domain.dll
+S:\ITI-9Months-IDA\GraduationProject\FeedInsight.Backend\src\FeedInsight.Domain\obj\Debug\net10.0\FeedInsight.Domain.csproj.AssemblyReference.cache
