@@ -1,5 +1,7 @@
 ﻿using FeedInsight.Domain.Common.Models;
 using FeedInsight.Domain.Feeds;
+using FeedInsight.Domain.Tenants;
+using FeedInsight.Domain.Users;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -12,7 +14,14 @@ namespace FeedInsight.Infrastructure.Persistence.Context
     {
         public FeedInsightDbContext(DbContextOptions<FeedInsightDbContext> options): base(options) { }
 
-        public virtual DbSet<Feed> Feeds { get; set; }
+        // Pure Domain DbSets
+        public DbSet<Feed> Feeds => Set<Feed>();
+        public DbSet<User> Users => Set<User>();
+        public DbSet<Role> Roles => Set<Role>();
+        public DbSet<UserRole> UserRoles => Set<UserRole>();
+        public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+        public DbSet<Tenant> Tenants => Set<Tenant>();
+        public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
