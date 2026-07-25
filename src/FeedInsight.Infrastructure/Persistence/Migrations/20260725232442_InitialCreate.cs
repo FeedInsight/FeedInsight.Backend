@@ -160,6 +160,11 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                     { new Guid("22222222-2222-2222-2222-222222222222"), new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, false, "ProductOwner", null }
                 });
 
+            migrationBuilder.InsertData(
+                table: "Users",
+                columns: new[] { "Id", "CreatedAt", "DeletedAt", "Email", "FirstName", "IsDeleted", "IsLocked", "LastName", "LockReason", "PasswordHash", "TenantId", "UpdatedAt" },
+                values: new object[] { new Guid("11111111-1111-1111-1111-111111111111"), new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "super@admin.com", "Super", false, false, "Admin", null, "$2a$11$HS4tYBhHEWaYg7VhXbIluOdpZ/Dmg4f/LBTrYzj5OeMj9Wi3PubZe", null, null });
+
             migrationBuilder.CreateIndex(
                 name: "IX_ApiKeys_KeyHash",
                 table: "ApiKeys",

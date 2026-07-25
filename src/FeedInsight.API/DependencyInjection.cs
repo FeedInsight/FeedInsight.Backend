@@ -1,4 +1,5 @@
-﻿using FeedInsight.API.Services;
+﻿using FeedInsight.API.Extensions;
+using FeedInsight.API.Services;
 using FeedInsight.Application;
 using FeedInsight.Application.Common.Interfaces;
 using FeedInsight.Infrastructure;
@@ -14,6 +15,8 @@ public static class DependencyInjection
         services.AddHttpContextAccessor();
 
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+
+        services.AddJwtAuthentication(configuration);
 
         // register application and infrastructure services
         services
