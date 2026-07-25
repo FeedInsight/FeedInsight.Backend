@@ -250,6 +250,19 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                     b.HasIndex("TenantId");
 
                     b.ToTable("Users");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("11111111-1111-1111-1111-111111111111"),
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "super@admin.com",
+                            FirstName = "Super",
+                            IsDeleted = false,
+                            IsLocked = false,
+                            LastName = "Admin",
+                            PasswordHash = "$2a$11$HS4tYBhHEWaYg7VhXbIluOdpZ/Dmg4f/LBTrYzj5OeMj9Wi3PubZe"
+                        });
                 });
 
             modelBuilder.Entity("FeedInsight.Domain.Users.UserRole", b =>
