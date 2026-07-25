@@ -4,18 +4,14 @@
     {
         public static WebApplication UseApiPipeline(this WebApplication app)
         {
-            // Configure the HTTP request pipeline.
-            //if (app.Environment.IsDevelopment())
-            //{
-            //    app.UseSwagger();
-            //    app.UseSwaggerUI();
-            //}
-
             app.UseSwagger();
             app.UseSwaggerUI();
 
             app.UseHttpsRedirection();
 
+            app.UseCors(CorsExtensions.PolicyName);
+
+            app.UseAuthentication();
             app.UseAuthorization();
 
             app.MapControllers();
