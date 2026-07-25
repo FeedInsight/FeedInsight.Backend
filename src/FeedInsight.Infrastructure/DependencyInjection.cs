@@ -1,13 +1,15 @@
-﻿using FeedInsight.Application.Features.Feeds;
+﻿using FeedInsight.Application.Common.Interfaces;
+using FeedInsight.Application.Common.Options;
 using FeedInsight.Application.Messaging;
 using FeedInsight.Domain.Common.Interfaces;
 using FeedInsight.Domain.Common.Interfaces.Security;
+using FeedInsight.Infrastructure.Authentication;
 using FeedInsight.Infrastructure.Messaging;
 using FeedInsight.Infrastructure.Persistence;
 using FeedInsight.Infrastructure.Persistence.Context;
 using FeedInsight.Infrastructure.Persistence.Repositories;
 using FeedInsight.Infrastructure.Security;
-using FeedInsight.Infrastructure.Security.Settings;
+using FeedInsight.Infrastructure.Security.Options;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,9 +22,10 @@ public static class DependencyInjection
     {
         // Bind Options (Options Pattern)
         services.Configure<SecuritySettings>(configuration.GetSection(SecuritySettings.SectionName));
+        services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));
 
         // register concrete mediator implementation
-        services.AddSingleton<IMediator, Mediator>();
+        services.AddScoped<IMediator, Mediator>();
 
         services.AddDbContext<FeedInsightDbContext>(options =>
         {
@@ -30,13 +33,15 @@ public static class DependencyInjection
         });
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
-        services.AddScoped<IFeedRepository, FeedRepository>();
+        services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 
         // Security & Cryptography
         services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
         services.AddSingleton<IApiKeyHasher, Sha256ApiKeyHasher>();
         services.AddSingleton<IApiKeyGenerator, SecureApiKeyGenerator>();
         services.AddSingleton<IEncryptor, AesEncryptor>();
+
+        services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
 
         return services;
     }
