@@ -25,7 +25,6 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("FeedInsight.Domain.Tenants.ApiKey", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreatedAt")
@@ -74,7 +73,6 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("FeedInsight.Domain.Tenants.Tenant", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("CompanyName")
@@ -123,7 +121,6 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("FeedInsight.Domain.Users.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreatedAt")
@@ -143,9 +140,6 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid>("UserId1")
-                        .HasColumnType("uniqueidentifier");
-
                     b.HasKey("Id");
 
                     b.HasIndex("Token")
@@ -153,15 +147,12 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.HasIndex("UserId1");
-
                     b.ToTable("RefreshTokens");
                 });
 
             modelBuilder.Entity("FeedInsight.Domain.Users.Role", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreatedAt")
@@ -208,7 +199,6 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("FeedInsight.Domain.Users.User", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreatedAt")
@@ -296,14 +286,6 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("FeedInsight.Domain.Users.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId1")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("FeedInsight.Domain.Users.User", b =>
