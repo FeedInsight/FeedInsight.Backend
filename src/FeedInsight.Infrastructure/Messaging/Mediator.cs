@@ -12,7 +12,7 @@ public class Mediator : IMediator
         _scopeFactory = scopeFactory;
     }
 
-    public Task<TResponse> SendAsync<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default)
+    public async Task<TResponse> SendAsync<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default)
     {
         // Create a scope to resolve scoped services (like Validators and Behaviors)
         using (var scope = _scopeFactory.CreateScope())
@@ -52,7 +52,7 @@ public class Mediator : IMediator
                 next = () => (Task<TResponse>)behaviorMethod.Invoke(behavior, new object[] { request, nextDelegate, cancellationToken });
             }
 
-            return next();
+            return await next();
         }
     }
 }

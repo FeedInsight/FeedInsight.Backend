@@ -1,5 +1,4 @@
 ﻿using FeedInsight.Domain.Common.Models;
-using FeedInsight.Domain.Feeds;
 using FeedInsight.Domain.Tenants;
 using FeedInsight.Domain.Users;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +14,6 @@ namespace FeedInsight.Infrastructure.Persistence.Context
         public FeedInsightDbContext(DbContextOptions<FeedInsightDbContext> options): base(options) { }
 
         // Pure Domain DbSets
-        public DbSet<Feed> Feeds => Set<Feed>();
         public DbSet<User> Users => Set<User>();
         public DbSet<Role> Roles => Set<Role>();
         public DbSet<UserRole> UserRoles => Set<UserRole>();
@@ -31,9 +29,17 @@ namespace FeedInsight.Infrastructure.Persistence.Context
             // IEntityTypeConfiguration<T> and applies its configurations!
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(FeedInsightDbContext).Assembly);
 
-            // Automatically apply the soft-delete Global Query Filter to all Entity classes
+            // Apply global conventions to all entities
             foreach (var entityType in modelBuilder.Model.GetEntityTypes())
             {
+                // 1. GLOBAL GUID CONFIGURATION
+                // If the entity has an 'Id' property of type Guid, force EF Core to accept our Domain-generated Guids
+                var idProperty = entityType.FindProperty("Id");
+                if (idProperty != null && idProperty.ClrType == typeof(Guid))
+                {
+                    idProperty.ValueGenerated = Microsoft.EntityFrameworkCore.Metadata.ValueGenerated.Never;
+                }
+
                 // Check if the entity inherits from our base Entity class
                 if (typeof(Entity).IsAssignableFrom(entityType.ClrType))
                 {

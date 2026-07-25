@@ -1,4 +1,4 @@
-﻿namespace FeedInsight.Infrastructure.Security.Settings;
+﻿namespace FeedInsight.Infrastructure.Security.Options;
 
 public class SecuritySettings
 {
