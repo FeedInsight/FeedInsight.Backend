@@ -46,5 +46,21 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .WithMany()
             .HasForeignKey(u => u.TenantId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        var superAdminId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        var seedDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        builder.HasData(new
+        {
+            Id = superAdminId,
+            TenantId = (Guid?)null,
+            FirstName = "Super",
+            LastName = "Admin",
+            Email = "super@admin.com",
+            PasswordHash = "$2a$11$HS4tYBhHEWaYg7VhXbIluOdpZ/Dmg4f/LBTrYzj5OeMj9Wi3PubZe",
+            IsLocked = false,
+            CreatedAt = seedDate,
+            IsDeleted = false
+        });
     }
 }
