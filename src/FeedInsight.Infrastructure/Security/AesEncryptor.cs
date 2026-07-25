@@ -1,5 +1,5 @@
 ﻿using FeedInsight.Domain.Common.Interfaces.Security;
-using FeedInsight.Infrastructure.Security.Settings;
+using FeedInsight.Infrastructure.Security.Options;
 using Microsoft.Extensions.Options;
 using System.Security.Cryptography;
 
