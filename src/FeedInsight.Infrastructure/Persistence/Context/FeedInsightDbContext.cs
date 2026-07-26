@@ -1,11 +1,9 @@
 ﻿using FeedInsight.Domain.Common.Models;
+using FeedInsight.Domain.CustomerFeedbacks;
 using FeedInsight.Domain.Tenants;
 using FeedInsight.Domain.Users;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
 using System.Linq.Expressions;
-using System.Text;
 
 namespace FeedInsight.Infrastructure.Persistence.Context
 {
@@ -20,6 +18,7 @@ namespace FeedInsight.Infrastructure.Persistence.Context
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
         public DbSet<Tenant> Tenants => Set<Tenant>();
         public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
+        public DbSet<CustomerFeedback> CustomerFeedbacks => Set<CustomerFeedback>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

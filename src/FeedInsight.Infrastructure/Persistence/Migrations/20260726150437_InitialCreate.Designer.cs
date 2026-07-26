@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FeedInsight.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(FeedInsightDbContext))]
-    [Migration("20260725232442_InitialCreate")]
+    [Migration("20260726150437_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -24,6 +24,53 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+            modelBuilder.Entity("FeedInsight.Domain.CustomerFeedbacks.CustomerFeedback", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsProcessedByRouter")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("MetadataJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OverallSentiment")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("RawContent")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SubmitterEmail")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsProcessedByRouter");
+
+                    b.HasIndex("TenantId");
+
+                    b.ToTable("CustomerFeedbacks");
+                });
 
             modelBuilder.Entity("FeedInsight.Domain.Tenants.ApiKey", b =>
                 {
@@ -284,6 +331,23 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                     b.HasIndex("RoleId");
 
                     b.ToTable("UserRoles");
+
+                    b.HasData(
+                        new
+                        {
+                            UserId = new Guid("11111111-1111-1111-1111-111111111111"),
+                            RoleId = new Guid("11111111-1111-1111-1111-111111111111"),
+                            AssignedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
+                        });
+                });
+
+            modelBuilder.Entity("FeedInsight.Domain.CustomerFeedbacks.CustomerFeedback", b =>
+                {
+                    b.HasOne("FeedInsight.Domain.Tenants.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("FeedInsight.Domain.Tenants.ApiKey", b =>
@@ -306,10 +370,12 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("FeedInsight.Domain.Users.User", b =>
                 {
-                    b.HasOne("FeedInsight.Domain.Tenants.Tenant", null)
+                    b.HasOne("FeedInsight.Domain.Tenants.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Tenant");
                 });
 
             modelBuilder.Entity("FeedInsight.Domain.Users.UserRole", b =>

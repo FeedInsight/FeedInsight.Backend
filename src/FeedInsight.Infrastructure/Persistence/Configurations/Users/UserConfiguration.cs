@@ -42,7 +42,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .OnDelete(DeleteBehavior.Cascade);
 
         // Optional relationship to Tenant (Null for SuperAdmins)
-        builder.HasOne<Tenant>()
+        builder.HasOne(u => u.Tenant)
             .WithMany()
             .HasForeignKey(u => u.TenantId)
             .OnDelete(DeleteBehavior.Restrict);
