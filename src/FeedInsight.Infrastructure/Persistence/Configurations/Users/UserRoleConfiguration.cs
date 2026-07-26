@@ -21,5 +21,17 @@ public class UserRoleConfiguration : IEntityTypeConfiguration<UserRole>
             .WithMany()
             .HasForeignKey(ur => ur.RoleId)
             .OnDelete(DeleteBehavior.Cascade);
+
+
+        var superAdminUserId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        var superAdminRoleId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        var seedDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        builder.HasData(new
+        {
+            UserId = superAdminUserId,
+            RoleId = superAdminRoleId,
+            AssignedAt = seedDate
+        });
     }
 }

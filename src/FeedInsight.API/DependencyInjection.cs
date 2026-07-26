@@ -26,6 +26,7 @@ public static class DependencyInjection
         // add swagger
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen();
+        services.AddSwaggerDocumentation();
 
         return services;
     }

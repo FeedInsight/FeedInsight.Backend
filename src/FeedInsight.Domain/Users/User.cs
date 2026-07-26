@@ -1,5 +1,6 @@
 ﻿using FeedInsight.Domain.Common.Interfaces.Security;
 using FeedInsight.Domain.Common.Models;
+using FeedInsight.Domain.Tenants;
 
 namespace FeedInsight.Domain.Users;
 
@@ -7,6 +8,7 @@ public class User : Entity
 {
     // Null means this is a global system user (Super Admin)
     public Guid? TenantId { get; private set; }
+    public Tenant? Tenant { get; private set; }
     
     public string FirstName { get; private set; }
     public string LastName { get; private set; }
@@ -51,6 +53,12 @@ public class User : Entity
     {
         IsLocked = false;
         LockReason = null;
+    }
+
+    public void UpdateProfile(string firstName, string lastName)
+    {
+        FirstName = firstName;
+        LastName = lastName;
     }
 
     public bool VerifyPassword(string plainTextPassword, IPasswordHasher hasher)
