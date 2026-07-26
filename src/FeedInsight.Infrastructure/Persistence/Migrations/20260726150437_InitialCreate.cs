@@ -77,6 +77,33 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "CustomerFeedbacks",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    TenantId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    RawContent = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    SubmitterEmail = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    MetadataJson = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    OverallSentiment = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    IsProcessedByRouter = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
+                    DeletedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CustomerFeedbacks", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_CustomerFeedbacks_Tenants_TenantId",
+                        column: x => x.TenantId,
+                        principalTable: "Tenants",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Users",
                 columns: table => new
                 {
@@ -165,6 +192,11 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                 columns: new[] { "Id", "CreatedAt", "DeletedAt", "Email", "FirstName", "IsDeleted", "IsLocked", "LastName", "LockReason", "PasswordHash", "TenantId", "UpdatedAt" },
                 values: new object[] { new Guid("11111111-1111-1111-1111-111111111111"), new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "super@admin.com", "Super", false, false, "Admin", null, "$2a$11$HS4tYBhHEWaYg7VhXbIluOdpZ/Dmg4f/LBTrYzj5OeMj9Wi3PubZe", null, null });
 
+            migrationBuilder.InsertData(
+                table: "UserRoles",
+                columns: new[] { "RoleId", "UserId", "AssignedAt" },
+                values: new object[] { new Guid("11111111-1111-1111-1111-111111111111"), new Guid("11111111-1111-1111-1111-111111111111"), new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) });
+
             migrationBuilder.CreateIndex(
                 name: "IX_ApiKeys_KeyHash",
                 table: "ApiKeys",
@@ -174,6 +206,16 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_ApiKeys_TenantId",
                 table: "ApiKeys",
+                column: "TenantId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CustomerFeedbacks_IsProcessedByRouter",
+                table: "CustomerFeedbacks",
+                column: "IsProcessedByRouter");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CustomerFeedbacks_TenantId",
+                table: "CustomerFeedbacks",
                 column: "TenantId");
 
             migrationBuilder.CreateIndex(
@@ -215,6 +257,9 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
         {
             migrationBuilder.DropTable(
                 name: "ApiKeys");
+
+            migrationBuilder.DropTable(
+                name: "CustomerFeedbacks");
 
             migrationBuilder.DropTable(
                 name: "RefreshTokens");
