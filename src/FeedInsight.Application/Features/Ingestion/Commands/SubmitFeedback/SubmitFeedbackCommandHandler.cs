@@ -2,6 +2,7 @@ using ErrorOr;
 using FeedInsight.Application.Common.Interfaces;
 using FeedInsight.Application.Features.Ingestion.Specifications;
 using FeedInsight.Application.Messaging;
+using FeedInsight.Domain.Common.Errors;
 using FeedInsight.Domain.Common.Interfaces;
 using FeedInsight.Domain.Common.Interfaces.Security;
 using FeedInsight.Domain.CustomerFeedbacks;
