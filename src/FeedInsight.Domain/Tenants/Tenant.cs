@@ -26,6 +26,11 @@ public class Tenant : Entity
         CompanyName = companyName;
     }
 
+    public void UpdateDetails(string companyName)
+    {
+        CompanyName = companyName;
+    }
+
     public void ConfigureJira(string baseUrl, string plainTextToken, string plainTextWebhookSecret, IEncryptor encryptor)
     {
         JiraBaseUrl = baseUrl;

@@ -55,7 +55,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, ErrorOr<Authent
         var accessToken = _jwtTokenGenerator.GenerateAccessToken(user);
         var refreshTokenString = _jwtTokenGenerator.GenerateRefreshToken();
 
-        var refreshToken = new RefreshToken(user.Id, refreshTokenString, DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryDays));
+        var refreshToken = new FeedInsight.Domain.Users.RefreshToken(user.Id, refreshTokenString, DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryDays));
         user.AddRefreshToken(refreshToken);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
