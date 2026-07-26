@@ -1,4 +1,4 @@
-﻿using ErrorOr;
+using ErrorOr;
 
 namespace FeedInsight.Domain.Common.Errors;
 
@@ -21,5 +21,13 @@ public static partial class Errors
         public static Error Unauthenticated => Error.Unauthorized(
             code: "Auth.Unauthenticated",
             description: "User is not authenticated.");
+
+        public static Error MissingApiKey => Error.Unauthorized(
+            code: "Auth.MissingApiKey",
+            description: "API Key is required in the X-Api-Key header.");
+
+        public static Error InvalidApiKey => Error.Unauthorized(
+            code: "Auth.InvalidApiKey",
+            description: "The provided API Key is invalid or expired.");
     }
 }
