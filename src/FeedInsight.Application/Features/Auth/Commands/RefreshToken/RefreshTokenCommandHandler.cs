@@ -69,6 +69,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, E
             user.LastName,
             newAccessToken,
             newRefreshTokenString,
+            user.UserRoles.Select(ur => ur.Role.Name).ToList(),
             expiresInSeconds
         );
     }
