@@ -1,10 +1,12 @@
 using FeedInsight.Application.Features.Tenants.Commands.ConfigureJira;
 using FeedInsight.Application.Features.Tenants.Commands.CreateApiKey;
 using FeedInsight.Application.Features.Tenants.Commands.CreateTenantOwner;
+using FeedInsight.Application.Features.Tenants.Commands.ToggleTenantStatus;
 using FeedInsight.Application.Features.Tenants.Commands.UpdateTenant;
 using FeedInsight.Application.Features.Tenants.Queries.GetApiKeys;
 using FeedInsight.Application.Features.Tenants.Queries.GetTenants;
 using FeedInsight.Application.Messaging;
+using FeedInsight.Domain.Tenants.Enums;
 using FeedInsight.Domain.Users;
 using FeedInsight.Infrastructure.Messaging;
 using Microsoft.AspNetCore.Authorization;
@@ -97,6 +99,28 @@ public class TenantsController : ApiController
                 pageSize: query.PageSize ?? 1,
                 totalItems: paginatedResult.TotalCount
             ),
+            errors => Problem(errors)
+        );
+    }
+
+    [HttpPatch("{tenantId:guid}/status")]
+    [Authorize(Roles = Role.SuperAdmin)]
+    public async Task<IActionResult> ToggleTenantStatus(
+     [FromRoute] Guid tenantId,
+     [FromBody] ToggleTenantStatusRequest request)
+    {
+        var command = new ToggleTenantStatusCommand(
+            TenantId: tenantId,
+            Status: request.Status,
+            Reason: request.Reason);
+
+        var result = await _mediator.SendAsync(command);
+
+        return result.Match(
+            _ => OkResponse(new
+            {
+                Message = "Tenant status updated successfully."
+            }),
             errors => Problem(errors)
         );
     }

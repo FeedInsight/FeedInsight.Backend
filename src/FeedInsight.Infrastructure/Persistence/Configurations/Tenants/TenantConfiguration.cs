@@ -9,7 +9,7 @@ public class TenantConfiguration : IEntityTypeConfiguration<Tenant>
 {
     public void Configure(EntityTypeBuilder<Tenant> builder)
     {
-        builder.HasKey(t => t.Id);
+        builder.HasKey(t => t.Id); 
 
         builder.Property(t => t.CompanyName)
             .IsRequired()
