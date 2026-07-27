@@ -29,5 +29,9 @@ public static partial class Errors
         public static Error InvalidApiKey => Error.Unauthorized(
             code: "Auth.InvalidApiKey",
             description: "The provided API Key is invalid or expired.");
+
+        public static Error TenantNotActive => Error.Forbidden(
+             code: "Auth.TenantNotActive",
+             description: "Login is not allowed because your company account is not active.");
     }
 }

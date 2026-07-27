@@ -1,4 +1,6 @@
-﻿namespace FeedInsight.API.Extensions
+﻿using FeedInsight.API.Middleware;
+
+namespace FeedInsight.API.Extensions
 {
     public static class staticWebApplicationExtensions
     {
@@ -12,6 +14,8 @@
             app.UseCors(CorsExtensions.PolicyName);
 
             app.UseAuthentication();
+
+            app.UseMiddleware<TenantStatusMiddleware>();
             app.UseAuthorization();
 
             app.MapControllers();

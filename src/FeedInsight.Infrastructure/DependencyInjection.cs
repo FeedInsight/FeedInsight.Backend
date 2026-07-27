@@ -10,6 +10,7 @@ using FeedInsight.Infrastructure.Persistence.Context;
 using FeedInsight.Infrastructure.Persistence.Repositories;
 using FeedInsight.Infrastructure.Security;
 using FeedInsight.Infrastructure.Security.Options;
+using FeedInsight.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -42,6 +43,7 @@ public static class DependencyInjection
         services.AddSingleton<IEncryptor, AesEncryptor>();
 
         services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
+        services.AddScoped<ITenantStatusChecker, TenantStatusChecker>();
 
         return services;
     }
