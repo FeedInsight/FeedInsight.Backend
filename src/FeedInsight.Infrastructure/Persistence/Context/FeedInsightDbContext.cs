@@ -1,5 +1,7 @@
-﻿using FeedInsight.Domain.Common.Models;
+﻿using FeedInsight.Domain.Categories;
+using FeedInsight.Domain.Common.Models;
 using FeedInsight.Domain.CustomerFeedbacks;
+using FeedInsight.Domain.ExtractedTasks;
 using FeedInsight.Domain.Tenants;
 using FeedInsight.Domain.Users;
 using Microsoft.EntityFrameworkCore;
@@ -19,6 +21,8 @@ namespace FeedInsight.Infrastructure.Persistence.Context
         public DbSet<Tenant> Tenants => Set<Tenant>();
         public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
         public DbSet<CustomerFeedback> CustomerFeedbacks => Set<CustomerFeedback>();
+        public DbSet<Category> Categories => Set<Category>();
+        public DbSet<ExtractedTask> ExtractedTasks => Set<ExtractedTask>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
