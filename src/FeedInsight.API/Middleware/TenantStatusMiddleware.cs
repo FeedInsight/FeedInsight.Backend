@@ -12,35 +12,19 @@ public class TenantStatusMiddleware
     }
 
     public async Task InvokeAsync(
-        HttpContext context,
-        ITenantStatusChecker tenantStatusChecker)
+        HttpContext context,ITenantResolver tenantResolver,ITenantStatusChecker tenantStatusChecker)
     {
-        // Skip tenant validation for unauthenticated requests
-        if (context.User.Identity?.IsAuthenticated != true)
+        var tenantId = await tenantResolver.ResolveTenantIdAsync( context.RequestAborted);
+
+       
+        if (tenantId is null)
         {
             await _next(context);
             return;
         }
 
-        // SuperAdmin has no TenantId, so skip tenant validation
-        var tenantIdClaim = context.User.FindFirst("tenantId")?.Value;
-
-        if (string.IsNullOrWhiteSpace(tenantIdClaim))
-        {
-            await _next(context);
-            return;
-        }
-
-        // Invalid TenantId claim
-        if (!Guid.TryParse(tenantIdClaim, out var tenantId))
-        {
-            await _next(context);
-            return;
-        }
-
-        // Check if the Tenant is active
         var result = await tenantStatusChecker.EnsureActiveAsync(
-            tenantId,
+            tenantId.Value,
             context.RequestAborted);
 
         if (result.IsError)
@@ -57,7 +41,6 @@ public class TenantStatusMiddleware
             return;
         }
 
-        // Tenant is active, continue the request pipeline
         await _next(context);
     }
 }
