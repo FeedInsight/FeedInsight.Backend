@@ -21,5 +21,9 @@ public static partial class Errors
         public static Error Unauthenticated => Error.Unauthorized(
             code: "Auth.Unauthenticated",
             description: "User is not authenticated.");
+
+        public static Error TenantNotActive => Error.Forbidden(
+             code: "Auth.TenantNotActive",
+             description: "Login is not allowed because your company account is not active.");
     }
 }

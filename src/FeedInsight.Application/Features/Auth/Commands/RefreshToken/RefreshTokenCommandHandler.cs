@@ -6,6 +6,8 @@ using FeedInsight.Application.Features.Users.Specifications;
 using FeedInsight.Application.Messaging;
 using FeedInsight.Domain.Common.Errors;
 using FeedInsight.Domain.Common.Interfaces;
+using FeedInsight.Domain.Tenants;
+using FeedInsight.Domain.Tenants.Enums;
 using FeedInsight.Domain.Users;
 using Microsoft.Extensions.Options;
 
@@ -17,17 +19,21 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, E
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
     private readonly IUnitOfWork _unitOfWork;
     private readonly JwtSettings _jwtSettings;
+    private readonly ITenantStatusChecker _tenantStatusChecker;
 
     public RefreshTokenCommandHandler(
         IRepository<User> userRepository,
         IJwtTokenGenerator jwtTokenGenerator,
         IUnitOfWork unitOfWork,
-        IOptions<JwtSettings> jwtOptions)
+        IOptions<JwtSettings> jwtOptions,
+        ITenantStatusChecker tenantStatusChecker)
     {
         _userRepository = userRepository;
         _jwtTokenGenerator = jwtTokenGenerator;
         _unitOfWork = unitOfWork;
         _jwtSettings = jwtOptions.Value;
+        _tenantStatusChecker = tenantStatusChecker;
+       
     }
     public async Task<ErrorOr<AuthenticationResult>> HandleAsync(RefreshTokenCommand request, CancellationToken cancellationToken = default)
     {
@@ -45,7 +51,17 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, E
         {
             return Errors.Auth.SessionExpired;
         }
+        if (user.TenantId.HasValue)
+        {
+            var tenantStatusResult = await _tenantStatusChecker.EnsureActiveAsync(
+                user.TenantId.Value,
+                cancellationToken);
 
+            if (tenantStatusResult.IsError)
+            {
+                return tenantStatusResult.Errors;
+            }
+        }
         // token rotation
         currentToken.Revoke();
 
