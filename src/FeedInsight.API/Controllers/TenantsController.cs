@@ -1,6 +1,9 @@
-﻿using FeedInsight.Application.Features.Tenants.Commands.CreateTenantOwner;
+using FeedInsight.Application.Features.Tenants.Commands.ConfigureJira;
+using FeedInsight.Application.Features.Tenants.Commands.CreateApiKey;
+using FeedInsight.Application.Features.Tenants.Commands.CreateTenantOwner;
 using FeedInsight.Application.Features.Tenants.Commands.ToggleTenantStatus;
 using FeedInsight.Application.Features.Tenants.Commands.UpdateTenant;
+using FeedInsight.Application.Features.Tenants.Queries.GetApiKeys;
 using FeedInsight.Application.Features.Tenants.Queries.GetTenants;
 using FeedInsight.Application.Messaging;
 using FeedInsight.Domain.Tenants.Enums;
@@ -30,6 +33,42 @@ public class TenantsController : ApiController
 
         return result.Match(
             success => OkResponse(new { Message = "Company details updated successfully." }),
+            errors => Problem(errors)
+        );
+    }
+
+    [HttpPut("my-company/jira-config")]
+    [Authorize(Roles = Role.ProductOwner)]
+    public async Task<IActionResult> ConfigureJira([FromBody] ConfigureJiraCommand command)
+    {
+        var result = await _mediator.SendAsync(command);
+
+        return result.Match(
+            success => OkResponse(new { Message = "Jira configuration updated successfully." }),
+            errors => Problem(errors)
+        );
+    }
+
+    [HttpGet("my-company/api-keys")]
+    [Authorize(Roles = Role.ProductOwner)]
+    public async Task<IActionResult> GetApiKeys()
+    {
+        var result = await _mediator.SendAsync(new GetApiKeysQuery());
+
+        return result.Match(
+            keys => OkResponse(keys),
+            errors => Problem(errors)
+        );
+    }
+
+    [HttpPost("my-company/api-keys")]
+    [Authorize(Roles = Role.ProductOwner)]
+    public async Task<IActionResult> CreateApiKey([FromBody] CreateApiKeyCommand command)
+    {
+        var result = await _mediator.SendAsync(command);
+
+        return result.Match(
+            plainTextKey => OkResponse(new { ApiKey = plainTextKey, Message = "API Key generated successfully. Please copy it now as it will not be shown again." }),
             errors => Problem(errors)
         );
     }
