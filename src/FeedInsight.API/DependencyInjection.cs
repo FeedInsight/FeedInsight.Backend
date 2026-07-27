@@ -16,6 +16,7 @@ public static class DependencyInjection
 
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<ICurrentApiKeyService, CurrentApiKeyService>();
+        services.AddScoped<ITenantResolver, TenantResolver>();
 
         services.AddJwtAuthentication(configuration);
 
