@@ -68,6 +68,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, ErrorOr<Authent
             user.LastName,
             accessToken,
             refreshTokenString,
+            user.UserRoles.Select(ur => ur.Role.Name).ToList(),
             expiresInSeconds
         );
     }
