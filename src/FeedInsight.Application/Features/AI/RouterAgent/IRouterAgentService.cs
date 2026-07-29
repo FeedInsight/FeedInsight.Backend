@@ -12,7 +12,7 @@ public interface IRouterAgentService
     /// Analyzes raw customer feedback, splits it into multiple technical intents if necessary, 
     /// and assigns each intent to the most accurate category.
     /// </summary>
-    Task<List<ExtractedTaskResult>> ProcessFeedbackAsync(
+    Task<RouterAgentResponse> ProcessFeedbackAsync(
         string rawFeedback,
         IEnumerable<Category> availableCategories,
         CancellationToken cancellationToken = default);

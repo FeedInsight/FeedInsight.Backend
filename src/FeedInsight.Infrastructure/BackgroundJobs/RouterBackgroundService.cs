@@ -9,9 +9,17 @@ using FeedInsight.Domain.ExtractedTasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace FeedInsight.Infrastructure.BackgroundJobs;
 
+/// <summary>
+/// A long-running background worker that constantly polls the database for new customer feedback
+/// and streams it through the Semantic Kernel AI Router.
+/// </summary>
 public class RouterBackgroundService : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
@@ -62,10 +70,11 @@ public class RouterBackgroundService : BackgroundService
                     var fallbackCategory = categories.FirstOrDefault(c => c.IsSystemDefault);
 
                     // 4. Send the raw text and valid categories to the LLM
-                    var aiResults = await routerAgent.ProcessFeedbackAsync(feedback.RawContent, categories, stoppingToken);
+                    // CHANGED: Now returns the wrapper object containing Sentiment AND Tasks!
+                    var aiResponse = await routerAgent.ProcessFeedbackAsync(feedback.RawContent, categories, stoppingToken);
 
                     // 5. Convert the raw JSON DTOs from the LLM into Domain Entities
-                    foreach (var aiTask in aiResults)
+                    foreach (var aiTask in aiResponse.Tasks)
                     {
                         // Validation: Ensure the LLM didn't invent a fake CategoryId
                         var validCategoryId = categories.Any(c => c.Id == aiTask.CategoryId)
@@ -87,9 +96,8 @@ public class RouterBackgroundService : BackgroundService
                     }
 
                     // 6. Mark the original feedback as processed 
-                    // Note: We are setting sentiment to "Unknown" for now. We can update the LLM prompt 
-                    // later to return Sentiment analysis alongside the tasks!
-                    feedback.MarkAsProcessed("Unknown");
+                    // CHANGED: We now pass the dynamic sentiment parsed from the LLM directly into the database!
+                    feedback.MarkAsProcessed(aiResponse.OverallSentiment);
                 }
 
                 // 7. Commit the entire batch to the database in one secure transaction
