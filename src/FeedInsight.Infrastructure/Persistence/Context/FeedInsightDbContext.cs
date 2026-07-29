@@ -2,8 +2,10 @@
 using FeedInsight.Domain.Common.Models;
 using FeedInsight.Domain.CustomerFeedbacks;
 using FeedInsight.Domain.ExtractedTasks;
+using FeedInsight.Domain.JiraSubtasks;
 using FeedInsight.Domain.Tenants;
 using FeedInsight.Domain.Users;
+using FeedInsight.Domain.UserStories;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 
@@ -23,6 +25,8 @@ namespace FeedInsight.Infrastructure.Persistence.Context
         public DbSet<CustomerFeedback> CustomerFeedbacks => Set<CustomerFeedback>();
         public DbSet<Category> Categories => Set<Category>();
         public DbSet<ExtractedTask> ExtractedTasks => Set<ExtractedTask>();
+        public DbSet<UserStory> UserStories => Set<UserStory>();
+        public DbSet<JiraSubtask> JiraSubtasks => Set<JiraSubtask>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -49,6 +49,9 @@ public static class DependencyInjection
         services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddScoped<ITenantStatusChecker, TenantStatusChecker>();
 
+        services.AddHttpClient();
+        services.AddTransient<IJiraSyncService, JiraSyncService>();
+
         // 5. AI & Semantic Kernel (ADDED)
         services.AddScoped<IRouterAgentService, RouterAgentService>();
 

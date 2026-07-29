@@ -2,6 +2,7 @@
 using FeedInsight.Domain.CustomerFeedbacks;
 using FeedInsight.Domain.ExtractedTasks;
 using FeedInsight.Domain.Tenants;
+using FeedInsight.Domain.UserStories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -32,7 +33,7 @@ public class ExtractedTaskConfiguration : IEntityTypeConfiguration<ExtractedTask
         builder.HasOne<Tenant>()
             .WithMany()
             .HasForeignKey(et => et.TenantId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.NoAction);
 
         // Feedback Relationship (No explicit navigation property needed right now)
         builder.HasOne<CustomerFeedback>()
@@ -46,7 +47,10 @@ public class ExtractedTaskConfiguration : IEntityTypeConfiguration<ExtractedTask
             .HasForeignKey(et => et.CategoryId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // We will add the UserStory relationship once we create the UserStory entity!
+        builder.HasOne<UserStory>()
+            .WithMany()
+            .HasForeignKey(et => et.UserStoryId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         // Indexes for fast lookups
         builder.HasIndex(et => et.TenantId);
