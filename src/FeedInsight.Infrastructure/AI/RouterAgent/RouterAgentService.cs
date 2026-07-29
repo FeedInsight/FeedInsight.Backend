@@ -4,11 +4,16 @@ using FeedInsight.Domain.Categories;
 using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace FeedInsight.Infrastructure.AI.RouterAgent;
 
-internal class RouterAgentService : IRouterAgentService
+public class RouterAgentService : IRouterAgentService
 {
     private readonly Kernel _kernel;
     private readonly ILogger<RouterAgentService> _logger;
@@ -19,9 +24,13 @@ internal class RouterAgentService : IRouterAgentService
         _logger = logger;
     }
 
-    public async Task<List<ExtractedTaskResult>> ProcessFeedbackAsync(string rawFeedback, IEnumerable<Category> availableCategories, CancellationToken cancellationToken = default)
+    public async Task<RouterAgentResponse> ProcessFeedbackAsync(
+        string rawFeedback,
+        IEnumerable<Category> availableCategories,
+        CancellationToken cancellationToken = default)
     {
-        // 1. Prepare the needed data
+        // 1. Prepare the dynamic categories for the prompt
+        // We only pass the Id, Name, and Description so the LLM doesn't waste tokens on internal DB fields
         var categoryContext = availableCategories.Select(c => new
         {
             Id = c.Id,
@@ -34,34 +43,60 @@ internal class RouterAgentService : IRouterAgentService
         // 2. define the exact system prompt
         const string prompt = """
             You are an expert Product Owner AI Assistant.
-            Your job is to analyze raw customer feedback and extract discrete, actionable technical tasks.
+            Your job is to analyze raw customer feedback, determine the overall sentiment, and extract discrete, actionable technical tasks.
             
             Available Categories (JSON format):
             {{$categories}}
 
             Rules:
-            1. Analyze the raw feedback. If it contains multiple distinct issues (e.g., a bug AND a feature request), split them into multiple separate tasks.
-            2. If it is a single issue, output one task.
-            3. Translate emotional or vague language into clear, professional technical intents (e.g., "The app is so slow when I click save" -> "Optimize performance of the save action").
-            4. Select the most appropriate CategoryId from the provided list based on the category descriptions. If none fit well, use the ID for the 'Uncategorized' category.
+            1. Analyze the raw feedback. If the customer mentions MULTIPLE distinct issues (e.g., a bug AND a feature request), you MUST split them into multiple separate JSON objects in the "tasks" array.
+            2. EACH JSON object must represent exactly ONE technical intent. Do NOT use "and" or commas to combine intents in a single string.
+            3. Translate emotional or vague language into clear, professional technical intents.
+            4. Select the most appropriate CategoryId from the provided list. If none fit well, use the ID for the 'Uncategorized' category.
             5. Extract 3 to 5 comma-separated technical keywords for vector database indexing (e.g., "ui, accessibility, button").
+            6. Determine the "overallSentiment" of the entire feedback. It MUST be exactly one of these three words: "Positive", "Neutral", or "Negative".
+
+            Example Input:
+            "The app is fast, but the profile picture upload crashes. Also, I really want a dark mode!"
+            
+            Example Output:
+            {
+              "overallSentiment": "Neutral",
+              "tasks": [
+                {
+                  "extractedIntent": "Fix profile picture upload crash",
+                  "categoryId": "00000000-0000-0000-0000-000000000000",
+                  "technicalKeywords": "profile, upload, crash, bug"
+                },
+                {
+                  "extractedIntent": "Implement dark mode feature",
+                  "categoryId": "11111111-1111-1111-1111-111111111111",
+                  "technicalKeywords": "dark mode, ui, theme, feature"
+                }
+              ]
+            }
 
             Raw Customer Feedback:
             {{$feedback}}
 
-            You MUST respond with a raw JSON array matching this exact schema:
-            [
-              {
-                "extractedIntent": "string",
-                "categoryId": "guid",
-                "technicalKeywords": "string"
-              }
-            ]
+            You MUST respond with a JSON object matching this exact schema:
+            {
+              "overallSentiment": "string",
+              "tasks": [
+                {
+                  "extractedIntent": "string",
+                  "categoryId": "guid",
+                  "technicalKeywords": "string"
+                }
+              ]
+            }
             """;
 
         // 3. Configure the LLM to strictly return JSON
         var executionSettings = new OpenAIPromptExecutionSettings
         {
+            // Note: If Hugging Face throws a 400 Bad Request error about "response_format", 
+            // simply comment this line out. Llama 3.1 is smart enough to follow the prompt without it!
             ResponseFormat = "json_object",
             Temperature = 0.2 // Low temperature for high deterministic, analytical output
         };
@@ -77,19 +112,20 @@ internal class RouterAgentService : IRouterAgentService
         {
             // 5. Execute the prompt
             var result = await _kernel.InvokePromptAsync(prompt, arguments, cancellationToken: cancellationToken);
-            string jsonResponse = result.GetValue<string>() ?? "[]";
+            string jsonResponse = result.GetValue<string>() ?? "{}";
 
-            // Note: Sometimes the LLM wraps the json_object response inside a single parent object like { "tasks": [...] }
-            // If using pure array response format, we parse it directly. 
-            // We use a small helper here to strip markdown blocks just in case the LLM hallucinates them.
+            // LOG THE RAW OUTPUT: This will print exactly what the LLM generated to your terminal
+            _logger.LogInformation("Raw LLM Response: \n{Response}", jsonResponse);
+
+            // Clean and format the JSON dynamically based on what the LLM decided to output
             jsonResponse = CleanJsonOutput(jsonResponse);
 
-            var extractedTasks = JsonSerializer.Deserialize<List<ExtractedTaskResult>>(jsonResponse, new JsonSerializerOptions
+            var aiResponse = JsonSerializer.Deserialize<RouterAgentResponse>(jsonResponse, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
             });
 
-            return extractedTasks ?? new List<ExtractedTaskResult>();
+            return aiResponse ?? new RouterAgentResponse();
         }
         catch (Exception ex)
         {
@@ -99,25 +135,56 @@ internal class RouterAgentService : IRouterAgentService
     }
 
     /// <summary>
-    /// Strips ```json and ``` markdown blocks if the LLM accidentally includes them.
+    /// Aggressively extracts and formats the JSON, handling edge cases where the LLM 
+    /// is chatty or ignores the wrapper object schema.
     /// </summary>
-    private static string CleanJsonOutput(string json)
+    private static string CleanJsonOutput(string response)
     {
-        json = json.Trim();
-        if (json.StartsWith("```json", StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrWhiteSpace(response)) return "{}";
+
+        response = response.Trim();
+
+        // 1. Strip Markdown formatting if the LLM hallucinates it
+        if (response.StartsWith("```json", StringComparison.OrdinalIgnoreCase))
+            response = response.Substring(7);
+        else if (response.StartsWith("```", StringComparison.OrdinalIgnoreCase))
+            response = response.Substring(3);
+
+        if (response.EndsWith("```", StringComparison.OrdinalIgnoreCase))
+            response = response.Substring(0, response.Length - 3);
+
+        response = response.Trim();
+
+        // 2. Ideal Case: It followed instructions and returned the Parent Object
+        if (response.StartsWith("{") && response.EndsWith("}"))
         {
-            json = json.Substring(7);
-        }
-        else if (json.StartsWith("```", StringComparison.OrdinalIgnoreCase))
-        {
-            json = json.Substring(3);
+            return response;
         }
 
-        if (json.EndsWith("```", StringComparison.OrdinalIgnoreCase))
+        // 3. Stubborn Case: It returned a raw Array of tasks instead of the wrapper object.
+        // We will manually wrap it to prevent a deserialization crash!
+        if (response.StartsWith("[") && response.EndsWith("]"))
         {
-            json = json.Substring(0, json.Length - 3);
+            return $"{{\"overallSentiment\": \"Neutral\", \"tasks\": {response}}}";
         }
 
-        return json.Trim();
+        // 4. Bruteforce Fallback: Search for the bounds of the JSON object inside conversational text
+        int objStart = response.IndexOf('{');
+        int objEnd = response.LastIndexOf('}');
+        if (objStart != -1 && objEnd != -1 && objEnd > objStart)
+        {
+            return response.Substring(objStart, objEnd - objStart + 1);
+        }
+
+        // 5. Bruteforce Fallback 2: Search for an array inside conversational text and wrap it
+        int arrStart = response.IndexOf('[');
+        int arrEnd = response.LastIndexOf(']');
+        if (arrStart != -1 && arrEnd != -1 && arrEnd > arrStart)
+        {
+            string arrayOnly = response.Substring(arrStart, arrEnd - arrStart + 1);
+            return $"{{\"overallSentiment\": \"Neutral\", \"tasks\": {arrayOnly}}}";
+        }
+
+        return "{}";
     }
 }

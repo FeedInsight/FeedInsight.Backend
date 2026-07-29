@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FeedInsight.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(FeedInsightDbContext))]
-    [Migration("20260726150437_InitialCreate")]
+    [Migration("20260729133924_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -24,6 +24,45 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+            modelBuilder.Entity("FeedInsight.Domain.Categories.Category", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsSystemDefault")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
+
+                    b.ToTable("Categories");
+                });
 
             modelBuilder.Entity("FeedInsight.Domain.CustomerFeedbacks.CustomerFeedback", b =>
                 {
@@ -70,6 +109,67 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                     b.HasIndex("TenantId");
 
                     b.ToTable("CustomerFeedbacks");
+                });
+
+            modelBuilder.Entity("FeedInsight.Domain.ExtractedTasks.ExtractedTask", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("CustomerFeedbackId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ExtractedIntent")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("JiraSubtaskKey")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("SyncStatus")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("TechnicalKeywords")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UserStoryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
+
+                    b.HasIndex("CustomerFeedbackId");
+
+                    b.HasIndex("SyncStatus");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("UserStoryId");
+
+                    b.ToTable("ExtractedTasks");
                 });
 
             modelBuilder.Entity("FeedInsight.Domain.Tenants.ApiKey", b =>
@@ -341,8 +441,38 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("FeedInsight.Domain.Categories.Category", b =>
+                {
+                    b.HasOne("FeedInsight.Domain.Tenants.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("FeedInsight.Domain.CustomerFeedbacks.CustomerFeedback", b =>
                 {
+                    b.HasOne("FeedInsight.Domain.Tenants.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FeedInsight.Domain.ExtractedTasks.ExtractedTask", b =>
+                {
+                    b.HasOne("FeedInsight.Domain.Categories.Category", null)
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FeedInsight.Domain.CustomerFeedbacks.CustomerFeedback", null)
+                        .WithMany()
+                        .HasForeignKey("CustomerFeedbackId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("FeedInsight.Domain.Tenants.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")

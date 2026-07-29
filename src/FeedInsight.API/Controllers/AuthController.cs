@@ -69,7 +69,7 @@ public class AuthController : ApiController
     }
 
     [HttpPost("register-admin")]
-  ///  [Authorize(Roles = Role.SuperAdmin)]
+    [Authorize(Roles = Role.SuperAdmin)]
     public async Task<IActionResult> RegisterSuperAdmin([FromBody] RegisterUserCommand command)
     {
         var result = await _mediator.SendAsync(command);

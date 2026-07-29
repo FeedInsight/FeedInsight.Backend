@@ -52,23 +52,53 @@ public static class DependencyInjection
         // 5. AI & Semantic Kernel (ADDED)
         services.AddScoped<IRouterAgentService, RouterAgentService>();
 
+        //services.AddTransient<Kernel>(sp =>
+        //{
+        //    var builder = Kernel.CreateBuilder();
+
+        //    // Pulling credentials from appsettings.json
+        //    var apiKey = configuration["OpenAI:ApiKey"];
+        //    var modelId = configuration["OpenAI:ModelId"] ?? "gpt-4o-mini";
+
+        //    if (string.IsNullOrEmpty(apiKey))
+        //    {
+        //        throw new InvalidOperationException("OpenAI API Key is missing from configuration.");
+        //    }
+
+        //    builder.AddOpenAIChatCompletion(modelId, apiKey);
+
+        //    return builder.Build();
+        //});
+
         services.AddTransient<Kernel>(sp =>
         {
             var builder = Kernel.CreateBuilder();
 
-            // Pulling credentials from appsettings.json
-            var apiKey = configuration["OpenAI:ApiKey"];
-            var modelId = configuration["OpenAI:ModelId"] ?? "gpt-4o-mini"; // Defaulting to 4o-mini for cost efficiency
+            var apiKey = configuration["HuggingFace:ApiKey"];
+            var modelId = configuration["HuggingFace:ModelId"] ?? "meta-llama/Llama-3.1-8B-Instruct";
 
-            if (string.IsNullOrEmpty(apiKey))
+            if (string.IsNullOrWhiteSpace(apiKey))
             {
-                throw new InvalidOperationException("OpenAI API Key is missing from configuration.");
+                throw new InvalidOperationException("HuggingFace API Key is missing from configuration.");
             }
 
-            builder.AddOpenAIChatCompletion(modelId, apiKey);
+            // Using the new Hugging Face Inference Router endpoint
+            var endpointUrl = configuration["HuggingFace:Endpoint"];
+            if (string.IsNullOrWhiteSpace(endpointUrl))
+            {
+                endpointUrl = "https://router.huggingface.co/v1/";
+            }
+
+            // Semantic Kernel will automatically append "chat/completions" to this endpoint
+            // and pass the modelId in the JSON body, exactly like your cURL command!
+            builder.AddOpenAIChatCompletion(
+                modelId: modelId,
+                apiKey: apiKey,
+                endpoint: new Uri(endpointUrl));
 
             return builder.Build();
         });
+
 
         // registe the background services (hosted services are singletons
         services.AddHostedService<RouterBackgroundService>();
