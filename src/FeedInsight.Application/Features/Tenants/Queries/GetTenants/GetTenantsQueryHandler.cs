@@ -27,7 +27,9 @@ public class GetTenantsQueryHandler : IRequestHandler<GetTenantsQuery, ErrorOr<P
         var dto = tenants
             .Select(t => new TenantLookupDto(
                 t.Id,
-                t.CompanyName))
+        t.CompanyName,
+        t.Status.ToString(),
+        t.CreatedAt))
             .ToList();
 
         var totalCount = await _tenantRepository.CountAsync(
