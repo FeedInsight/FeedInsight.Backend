@@ -44,7 +44,7 @@ namespace FeedInsight.Application.Features.Tenants.Commands.ConfigureJira
             var tenant = await _tenantRepository.GetByIdAsync(user.TenantId.Value, cancellationToken);
             if (tenant is null) return Errors.Tenants.NotFound;
 
-            tenant.ConfigureJira(request.JiraUrl, request.ApiKey, request.Username, _encryptor);
+            tenant.ConfigureJira(request.JiraUrl, request.PersonalAccessToken, request.WebHookSecret, _encryptor);
             
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
