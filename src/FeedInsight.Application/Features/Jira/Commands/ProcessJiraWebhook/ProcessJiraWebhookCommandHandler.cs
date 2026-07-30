@@ -7,7 +7,6 @@ using FeedInsight.Domain.Categories;
 using FeedInsight.Domain.Common.Errors;
 using FeedInsight.Domain.Common.Interfaces;
 using FeedInsight.Domain.Common.Interfaces.Security;
-using FeedInsight.Domain.JiraSubtasks;
 using FeedInsight.Domain.Tenants;
 using FeedInsight.Domain.UserStories;
 using FeedInsight.Domain.UserStories.Enums;
@@ -22,8 +21,7 @@ public class ProcessJiraWebhookCommandHandler : IRequestHandler<ProcessJiraWebho
 {
     private readonly IRepository<Tenant> _tenantRepository;
     private readonly IRepository<UserStory> _userStoryRepository;
-    private readonly IRepository<JiraSubtask> _jiraSubtaskRepository;
-    private readonly IRepository<Category> _categoryRepository; // ADDED
+    private readonly IRepository<Category> _categoryRepository;
     private readonly IEncryptor _encryptor;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<ProcessJiraWebhookCommandHandler> _logger;
@@ -31,16 +29,14 @@ public class ProcessJiraWebhookCommandHandler : IRequestHandler<ProcessJiraWebho
     public ProcessJiraWebhookCommandHandler(
         IRepository<Tenant> tenantRepository,
         IRepository<UserStory> userStoryRepository,
-        IRepository<JiraSubtask> jiraSubtaskRepository,
-        IRepository<Category> categoryRepository, // ADDED
+        IRepository<Category> categoryRepository,
         IEncryptor encryptor,
         IUnitOfWork unitOfWork,
         ILogger<ProcessJiraWebhookCommandHandler> logger)
     {
         _tenantRepository = tenantRepository;
         _userStoryRepository = userStoryRepository;
-        _jiraSubtaskRepository = jiraSubtaskRepository;
-        _categoryRepository = categoryRepository; // ADDED
+        _categoryRepository = categoryRepository;
         _encryptor = encryptor;
         _unitOfWork = unitOfWork;
         _logger = logger;
@@ -86,52 +82,34 @@ public class ProcessJiraWebhookCommandHandler : IRequestHandler<ProcessJiraWebho
 
             if (isSubtask)
             {
-                var subtask = await _jiraSubtaskRepository.SingleOrDefaultAsync(
-                    new JiraSubtaskByJiraKeySpec(tenant.Id, ticketKey), cancellationToken);
-
-                if (webhookEvent == "jira:issue_deleted" && subtask != null)
-                {
-                    subtask.SoftDelete();
-                }
-                else if (webhookEvent == "jira:issue_updated" && subtask != null)
-                {
-                    subtask.UpdateFromWebhook(title, status);
-                }
-                else if (webhookEvent == "jira:issue_created" && subtask == null)
-                {
-                    subtask = new JiraSubtask(tenant.Id, Guid.Empty, ticketKey, title, status);
-                    await _jiraSubtaskRepository.AddAsync(subtask, cancellationToken);
-                }
+                return Result.Success;
             }
-            else // Epic or Story
-            {
-                var story = await _userStoryRepository.SingleOrDefaultAsync(
+            var story = await _userStoryRepository.SingleOrDefaultAsync(
                     new UserStoryByJiraKeySpec(tenant.Id, ticketKey), cancellationToken);
 
-                var mappedStatus = status.Equals("Done", StringComparison.OrdinalIgnoreCase)
-                        ? UserStoryStatus.Closed
-                        : UserStoryStatus.Synced;
+            var mappedStatus = status.Equals("Done", StringComparison.OrdinalIgnoreCase)
+                    ? UserStoryStatus.Closed
+                    : UserStoryStatus.Synced;
 
-                if (webhookEvent == "jira:issue_deleted" && story != null)
-                {
-                    story.SoftDelete();
-                }
-                else if (webhookEvent == "jira:issue_updated" && story != null)
-                {
-                    story.UpdateFromJiraWebhook(title, story.AcceptanceCriteria, mappedStatus);
-                }
-                else if (webhookEvent == "jira:issue_created" && story == null)
-                {
-                    // Fetch the fallback category for new Jira stories
-                    var categories = await _categoryRepository.ListAsync(new CategoriesByTenantSpec(tenant.Id), cancellationToken);
-                    var fallbackCategory = categories.FirstOrDefault(c => c.IsSystemDefault);
+            if (webhookEvent == "jira:issue_deleted" && story != null)
+            {
+                story.SoftDelete();
+            }
+            else if (webhookEvent == "jira:issue_updated" && story != null)
+            {
+                story.UpdateFromJiraWebhook(title, story.AcceptanceCriteria, mappedStatus);
+            }
+            else if (webhookEvent == "jira:issue_created" && story == null)
+            {
+                // Fetch the fallback category for new Jira stories
+                var categories = await _categoryRepository.ListAsync(new CategoriesByTenantSpec(tenant.Id), cancellationToken);
+                var fallbackCategory = categories.FirstOrDefault(c => c.IsSystemDefault);
 
-                    if (fallbackCategory != null)
-                    {
-                        story = new UserStory(tenant.Id, fallbackCategory.Id, UserStorySource.Jira, title, "", ticketKey);
-                        story.UpdateFromJiraWebhook(title, "", mappedStatus);
-                        await _userStoryRepository.AddAsync(story, cancellationToken);
-                    }
+                if (fallbackCategory != null)
+                {
+                    story = new UserStory(tenant.Id, fallbackCategory.Id, UserStorySource.Jira, title, "", ticketKey);
+                    story.UpdateFromJiraWebhook(title, "", mappedStatus);
+                    await _userStoryRepository.AddAsync(story, cancellationToken);
                 }
             }
 

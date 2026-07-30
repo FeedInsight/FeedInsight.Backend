@@ -1,9 +1,9 @@
 ﻿using FeedInsight.Application.Common.Interfaces;
 using FeedInsight.Application.Features.Categories.Specifications;
+using FeedInsight.Application.Features.UserStories.Specifications;
 using FeedInsight.Domain.Categories;
 using FeedInsight.Domain.Common.Interfaces;
 using FeedInsight.Domain.Common.Interfaces.Security;
-using FeedInsight.Domain.JiraSubtasks;
 using FeedInsight.Domain.Tenants;
 using FeedInsight.Domain.UserStories;
 using FeedInsight.Domain.UserStories.Enums;
@@ -23,7 +23,6 @@ public class JiraSyncService : IJiraSyncService
     private readonly IRepository<Tenant> _tenantRepository;
     private readonly IRepository<Category> _categoryRepository;
     private readonly IRepository<UserStory> _userStoryRepository;
-    private readonly IRepository<JiraSubtask> _jiraSubtaskRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IEncryptor _encryptor;
     private readonly IHttpClientFactory _httpClientFactory;
@@ -33,7 +32,6 @@ public class JiraSyncService : IJiraSyncService
         IRepository<Tenant> tenantRepository,
         IRepository<Category> categoryRepository,
         IRepository<UserStory> userStoryRepository,
-        IRepository<JiraSubtask> jiraSubtaskRepository,
         IUnitOfWork unitOfWork,
         IEncryptor encryptor,
         IHttpClientFactory httpClientFactory,
@@ -42,7 +40,6 @@ public class JiraSyncService : IJiraSyncService
         _tenantRepository = tenantRepository;
         _categoryRepository = categoryRepository;
         _userStoryRepository = userStoryRepository;
-        _jiraSubtaskRepository = jiraSubtaskRepository;
         _unitOfWork = unitOfWork;
         _encryptor = encryptor;
         _httpClientFactory = httpClientFactory;
@@ -53,7 +50,7 @@ public class JiraSyncService : IJiraSyncService
     {
         try
         {
-            // 1. Get and decrypt jira credentials
+            // 1. Fetch Tenant & Decrypt Credentials
             var tenant = await _tenantRepository.GetByIdAsync(tenantId, cancellationToken);
             if (tenant is null || string.IsNullOrWhiteSpace(tenant.JiraBaseUrl) || string.IsNullOrWhiteSpace(tenant.JiraEncryptedToken))
             {
@@ -66,75 +63,137 @@ public class JiraSyncService : IJiraSyncService
             // 2. Fetch the "Uncategorized" Category to act as a safe fallback
             var categories = await _categoryRepository.ListAsync(new CategoriesByTenantSpec(tenant.Id), cancellationToken);
             var fallbackCategory = categories.FirstOrDefault(c => c.IsSystemDefault);
-            if (fallbackCategory is null) return; 
+            if (fallbackCategory is null) return; // Should never happen due to DB seeding
 
             // 3. Prepare HttpClient
             var client = _httpClientFactory.CreateClient("JiraClient");
             client.BaseAddress = new Uri(tenant.JiraBaseUrl);
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", token);
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-            // 4. Fetch recent active issues from Jira using JQL
-            // Note: In production, you would handle pagination here using 'startAt' and 'maxResults'
-            string jql = "statusCategory != Done ORDER BY created DESC";
-            var response = await client.GetAsync($"/rest/api/3/search?jql={Uri.EscapeDataString(jql)}&maxResults=100", cancellationToken);
+            // 4. Fetch active issues from Jira using JQL with Pagination
+            // Added 'issuetype in standardIssueTypes()' to explicitly tell Jira NOT to send sub-tasks.
+            string jql = "statusCategory != Done AND issuetype in standardIssueTypes() ORDER BY updated DESC";
 
-            if (!response.IsSuccessStatusCode)
+            int maxResults = 100;
+            string? nextPageToken = null;
+            bool hasMore = true;
+
+            while (hasMore)
             {
-                _logger.LogError("Jira API returned {StatusCode} for Tenant {TenantId}", response.StatusCode, tenant.Id);
-                return;
-            }
-
-            var jsonString = await response.Content.ReadAsStringAsync(cancellationToken);
-            using var document = JsonDocument.Parse(jsonString);
-            var issues = document.RootElement.GetProperty("issues").EnumerateArray();
-
-            foreach (var issue in issues)
-            {
-                string key = issue.GetProperty("key").GetString() ?? "";
-                var fields = issue.GetProperty("fields");
-                string title = fields.GetProperty("summary").GetString() ?? "Untitled";
-                string issueType = fields.GetProperty("issuetype").GetProperty("name").GetString() ?? "";
-                string status = fields.GetProperty("status").GetProperty("name").GetString() ?? "To Do";
-
-                // If it's a Subtask, map to JiraSubtask
-                if (issueType.Equals("Sub-task", StringComparison.OrdinalIgnoreCase))
+                var payload = new System.Collections.Generic.Dictionary<string, object>
                 {
-                    // To link it, we need to find its parent story in our DB.
-                    // Jira stores the parent inside a specific field depending on the setup.
-                    // For safety, we will just save it and a later vector search can map it properly if the parent isn't loaded yet.
-                    var subtask = new JiraSubtask(
-                        tenantId: tenant.Id,
-                        userStoryId: Guid.Empty, // Placeholder until parent is resolved
-                        jiraSubtaskKey: key,
-                        title: title,
-                        status: status
-                    );
-                    await _jiraSubtaskRepository.AddAsync(subtask, cancellationToken);
+                    { "jql", jql },
+                    { "maxResults", maxResults },
+                    { "fields", new[] { "summary", "issuetype", "status" } }
+                };
+
+                if (!string.IsNullOrEmpty(nextPageToken))
+                {
+                    payload.Add("nextPageToken", nextPageToken);
+                }
+
+                var content = new StringContent(JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
+                var response = await client.PostAsync("/rest/api/3/search/jql", content, cancellationToken);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorResponse = await response.Content.ReadAsStringAsync(cancellationToken);
+                    _logger.LogError("Jira API returned {StatusCode} for Tenant {TenantId}. Details: {Error}. Stopping sync.", response.StatusCode, tenant.Id, errorResponse);
+                    break;
+                }
+
+                var jsonString = await response.Content.ReadAsStringAsync(cancellationToken);
+                using var document = JsonDocument.Parse(jsonString);
+                var root = document.RootElement;
+
+                var issues = root.GetProperty("issues").EnumerateArray();
+
+                foreach (var issue in issues)
+                {
+                    // Defensively parse key
+                    string key = issue.TryGetProperty("key", out var keyElement) && keyElement.ValueKind == JsonValueKind.String
+                        ? keyElement.GetString() ?? ""
+                        : "";
+
+                    // Defensively parse fields object
+                    if (!issue.TryGetProperty("fields", out var fields) || fields.ValueKind != JsonValueKind.Object)
+                    {
+                        continue;
+                    }
+
+                    // Defensively parse summary
+                    string title = "Untitled";
+                    if (fields.TryGetProperty("summary", out var summaryElement) && summaryElement.ValueKind == JsonValueKind.String)
+                    {
+                        title = summaryElement.GetString() ?? "Untitled";
+                    }
+
+                    // Defensively parse issuetype
+                    string issueType = "";
+                    if (fields.TryGetProperty("issuetype", out var issueTypeElement) && issueTypeElement.ValueKind == JsonValueKind.Object)
+                    {
+                        if (issueTypeElement.TryGetProperty("name", out var typeNameElement) && typeNameElement.ValueKind == JsonValueKind.String)
+                        {
+                            issueType = typeNameElement.GetString() ?? "";
+                        }
+                    }
+
+                    // Fallback defense in case a custom sub-task type slips past standardIssueTypes()
+                    if (issueType.Contains("Sub-task", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    // Defensively parse status
+                    string status = "To Do";
+                    if (fields.TryGetProperty("status", out var statusElement) && statusElement.ValueKind == JsonValueKind.Object)
+                    {
+                        if (statusElement.TryGetProperty("name", out var statusNameElement) && statusNameElement.ValueKind == JsonValueKind.String)
+                        {
+                            status = statusNameElement.GetString() ?? "To Do";
+                        }
+                    }
+
+                    var existingStory = await _userStoryRepository.SingleOrDefaultAsync(new UserStoryByJiraKeySpec(tenant.Id, key), cancellationToken);
+
+                    if (existingStory is not null)
+                    {
+                        // Update existing issue instead of duplicating it
+                        existingStory.UpdateFromJiraWebhook(title, existingStory.AcceptanceCriteria, UserStoryStatus.Synced);
+                        await _userStoryRepository.UpdateAsync(existingStory, cancellationToken);
+                    }
+                    else
+                    {
+                        // Treat all standard issues (Epic, Story, Task, Bug) as a generic UserStory in our Domain
+                        var story = new UserStory(
+                            tenantId: tenant.Id,
+                            categoryId: fallbackCategory.Id,
+                            source: UserStorySource.Jira,
+                            title: title,
+                            acceptanceCriteria: "",
+                            jiraTicketKey: key
+                        );
+
+                        story.UpdateFromJiraWebhook(title, "", UserStoryStatus.Synced);
+                        await _userStoryRepository.AddAsync(story, cancellationToken);
+                    }
+                }
+
+                if (root.TryGetProperty("nextPageToken", out var tokenProp) && tokenProp.ValueKind == JsonValueKind.String)
+                {
+                    nextPageToken = tokenProp.GetString();
+                    hasMore = !string.IsNullOrEmpty(nextPageToken);
                 }
                 else
                 {
-                    // Treat as an Epic/Story/Task -> UserStory Semantic Backlog
-                    var story = new UserStory(
-                        tenantId: tenant.Id,
-                        categoryId: fallbackCategory.Id, // Defaults to Uncategorized
-                        source: UserStorySource.Jira,
-                        title: title,
-                        acceptanceCriteria: "", // Could be mapped from description
-                        jiraTicketKey: key
-                    );
-
-                    // We must manually set the status for imported tickets
-                    story.UpdateFromJiraWebhook(title, "", UserStoryStatus.Synced);
-                    await _userStoryRepository.AddAsync(story, cancellationToken);
+                    hasMore = false;
                 }
             }
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
             _logger.LogInformation("Successfully completed Initial Jira Sync for Tenant {TenantId}", tenant.Id);
 
-            // Note: The Qdrant Embeddings will automatically be triggered by EF Core Domain Events
-            // attached to the SaveChangesAsync method!
         }
         catch (Exception ex)
         {
