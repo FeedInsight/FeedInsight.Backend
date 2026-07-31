@@ -19,6 +19,7 @@ public static class DependencyInjection
         services.AddScoped<ITenantResolver, TenantResolver>();
 
         services.AddJwtAuthentication(configuration);
+        services.AddFrontendCorsPolicy(configuration);
 
         // register application and infrastructure services
         services
