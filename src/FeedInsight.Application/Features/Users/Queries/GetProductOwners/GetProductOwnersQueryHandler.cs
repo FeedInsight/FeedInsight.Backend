@@ -18,11 +18,24 @@ public class GetProductOwnersQueryHandler : IRequestHandler<GetProductOwnersQuer
 
     public async Task<ErrorOr<PaginatedResult<ProductOwnerDto>>> HandleAsync(GetProductOwnersQuery request, CancellationToken cancellationToken = default)
     {
-        var countSpec = new ProductOwnersFilterSpec(request.SearchTerm, request.TenantId);
-        var totalCount = await _userRepository.CountAsync(countSpec, cancellationToken);
+        var totalCount = await _userRepository.CountAsync(
+            new ProductOwnersSpec(request.SearchTerm, request.TenantId, request.IsActive),
+            cancellationToken);
 
-        var listSpec = new ProductOwnersPaginatedSpec(request.SearchTerm, request.Page, request.PageSize);
-        var items = await _userRepository.ListAsync(listSpec, cancellationToken);
+        var users = await _userRepository.ListAsync(
+            new ProductOwnersSpec(request.SearchTerm, request.TenantId, request.IsActive, request.Page, request.PageSize),
+            cancellationToken);
+
+        var items = users
+            .Select(u => new ProductOwnerDto(
+                u.Id,
+                u.FirstName,
+                u.LastName,
+                u.Email,
+                u.Tenant != null ? u.Tenant.CompanyName : "Unknown",
+                u.IsLocked,
+                u.CreatedAt))
+            .ToList();
 
         return new PaginatedResult<ProductOwnerDto>(items, totalCount);
     }
