@@ -77,6 +77,31 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Categories",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    TenantId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    IsSystemDefault = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
+                    DeletedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Categories", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Categories_Tenants_TenantId",
+                        column: x => x.TenantId,
+                        principalTable: "Tenants",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "CustomerFeedbacks",
                 columns: table => new
                 {
@@ -132,6 +157,41 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "UserStories",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    TenantId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    CategoryId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Source = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    JiraTicketKey = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    Title = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    AcceptanceCriteria = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    UrgencyScore = table.Column<int>(type: "int", nullable: false),
+                    Status = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
+                    DeletedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserStories", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_UserStories_Categories_CategoryId",
+                        column: x => x.CategoryId,
+                        principalTable: "Categories",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_UserStories_Tenants_TenantId",
+                        column: x => x.TenantId,
+                        principalTable: "Tenants",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "RefreshTokens",
                 columns: table => new
                 {
@@ -178,6 +238,83 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "ExtractedTasks",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    TenantId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    CustomerFeedbackId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    CategoryId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    UserStoryId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    ExtractedIntent = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    TechnicalKeywords = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    SyncStatus = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    JiraSubtaskKey = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
+                    DeletedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ExtractedTasks", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ExtractedTasks_Categories_CategoryId",
+                        column: x => x.CategoryId,
+                        principalTable: "Categories",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_ExtractedTasks_CustomerFeedbacks_CustomerFeedbackId",
+                        column: x => x.CustomerFeedbackId,
+                        principalTable: "CustomerFeedbacks",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_ExtractedTasks_Tenants_TenantId",
+                        column: x => x.TenantId,
+                        principalTable: "Tenants",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_ExtractedTasks_UserStories_UserStoryId",
+                        column: x => x.UserStoryId,
+                        principalTable: "UserStories",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "JiraSubtasks",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    TenantId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    UserStoryId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    JiraSubtaskKey = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Title = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    Status = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
+                    DeletedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_JiraSubtasks", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_JiraSubtasks_Tenants_TenantId",
+                        column: x => x.TenantId,
+                        principalTable: "Tenants",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_JiraSubtasks_UserStories_UserStoryId",
+                        column: x => x.UserStoryId,
+                        principalTable: "UserStories",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
             migrationBuilder.InsertData(
                 table: "Roles",
                 columns: new[] { "Id", "CreatedAt", "DeletedAt", "IsDeleted", "Name", "UpdatedAt" },
@@ -209,6 +346,11 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                 column: "TenantId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Categories_TenantId",
+                table: "Categories",
+                column: "TenantId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_CustomerFeedbacks_IsProcessedByRouter",
                 table: "CustomerFeedbacks",
                 column: "IsProcessedByRouter");
@@ -217,6 +359,47 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                 name: "IX_CustomerFeedbacks_TenantId",
                 table: "CustomerFeedbacks",
                 column: "TenantId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ExtractedTasks_CategoryId",
+                table: "ExtractedTasks",
+                column: "CategoryId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ExtractedTasks_CustomerFeedbackId",
+                table: "ExtractedTasks",
+                column: "CustomerFeedbackId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ExtractedTasks_SyncStatus",
+                table: "ExtractedTasks",
+                column: "SyncStatus");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ExtractedTasks_TenantId",
+                table: "ExtractedTasks",
+                column: "TenantId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ExtractedTasks_UserStoryId",
+                table: "ExtractedTasks",
+                column: "UserStoryId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_JiraSubtasks_JiraSubtaskKey",
+                table: "JiraSubtasks",
+                column: "JiraSubtaskKey",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_JiraSubtasks_TenantId",
+                table: "JiraSubtasks",
+                column: "TenantId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_JiraSubtasks_UserStoryId",
+                table: "JiraSubtasks",
+                column: "UserStoryId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_RefreshTokens_Token",
@@ -250,6 +433,21 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                 name: "IX_Users_TenantId",
                 table: "Users",
                 column: "TenantId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserStories_CategoryId",
+                table: "UserStories",
+                column: "CategoryId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserStories_JiraTicketKey",
+                table: "UserStories",
+                column: "JiraTicketKey");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserStories_TenantId",
+                table: "UserStories",
+                column: "TenantId");
         }
 
         /// <inheritdoc />
@@ -259,7 +457,10 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                 name: "ApiKeys");
 
             migrationBuilder.DropTable(
-                name: "CustomerFeedbacks");
+                name: "ExtractedTasks");
+
+            migrationBuilder.DropTable(
+                name: "JiraSubtasks");
 
             migrationBuilder.DropTable(
                 name: "RefreshTokens");
@@ -268,10 +469,19 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                 name: "UserRoles");
 
             migrationBuilder.DropTable(
+                name: "CustomerFeedbacks");
+
+            migrationBuilder.DropTable(
+                name: "UserStories");
+
+            migrationBuilder.DropTable(
                 name: "Roles");
 
             migrationBuilder.DropTable(
                 name: "Users");
+
+            migrationBuilder.DropTable(
+                name: "Categories");
 
             migrationBuilder.DropTable(
                 name: "Tenants");
