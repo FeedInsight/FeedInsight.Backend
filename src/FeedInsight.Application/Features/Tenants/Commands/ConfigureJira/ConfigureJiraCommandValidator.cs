@@ -11,13 +11,11 @@ namespace FeedInsight.Application.Features.Tenants.Commands.ConfigureJira
                 .MaximumLength(500).WithMessage("Jira URL cannot exceed 500 characters.")
                 .Matches(@"^https?:\/\/.*$").WithMessage("Jira URL must be a valid URL.");
 
-            RuleFor(x => x.Username)
-                .NotEmpty().WithMessage("Username is required.")
-                .MaximumLength(100).WithMessage("Username cannot exceed 100 characters.");
+            RuleFor(x => x.PersonalAccessToken)
+                .NotEmpty().WithMessage("Username is required.");
 
-            RuleFor(x => x.ApiKey)
-                .NotEmpty().WithMessage("API Key is required.")
-                .MaximumLength(2000).WithMessage("API Key cannot exceed 2000 characters.");
+            RuleFor(x => x.WebHookSecret)
+                .NotEmpty().WithMessage("API Key is required.");
         }
     }
 }
