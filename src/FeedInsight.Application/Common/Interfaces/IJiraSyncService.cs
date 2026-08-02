@@ -1,4 +1,7 @@
-﻿namespace FeedInsight.Application.Common.Interfaces;
+using FeedInsight.Application.Features.Jira.Models;
+using FeedInsight.Domain.UserStories;
+
+namespace FeedInsight.Application.Common.Interfaces;
 
 public interface IJiraSyncService
 {
@@ -7,4 +10,8 @@ public interface IJiraSyncService
     /// Expected to be a long-running background task.
     /// </summary>
     Task TriggerInitialBulkSyncAsync(Guid tenantId, CancellationToken cancellationToken = default);
+
+    Task<JiraIssueDto?> GetIssueByKeyAsync(Guid tenantId, string issueKey, CancellationToken cancellationToken = default);
+
+    Task PushStoryToJiraAsync(Guid tenantId, UserStory story, CancellationToken cancellationToken = default);
 }

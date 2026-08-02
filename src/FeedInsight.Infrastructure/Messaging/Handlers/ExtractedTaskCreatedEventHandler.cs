@@ -1,4 +1,5 @@
 using FeedInsight.Application.Common.Interfaces;
+using FeedInsight.Application.Common.Models;
 using FeedInsight.Application.Messaging;
 using FeedInsight.Domain.ExtractedTasks;
 using FeedInsight.Domain.ExtractedTasks.Events;
@@ -37,13 +38,15 @@ public class ExtractedTaskCreatedEventHandler : IDomainEventHandler<ExtractedTas
         }
 
         var textToEmbed = $"{task.ExtractedIntent} {task.TechnicalKeywords}".Trim();
-        
+
         _logger.LogInformation("Generating embedding for ExtractedTask {TaskId}", task.Id);
         var embedding = await _embeddingService.GenerateEmbeddingAsync(textToEmbed, cancellationToken);
 
         _logger.LogInformation("Upserting ExtractedTask {TaskId} to Qdrant", task.Id);
-        await _qdrantService.UpsertTaskAsync(task, embedding, cancellationToken);
-        
+        var payload = new ExtractedTaskPayload(task.TenantId, task.CategoryId, textToEmbed);
+        await _qdrantService.UpsertPointAsync("extracted_tasks", task.Id, embedding, payload, cancellationToken);
+
+
         _logger.LogInformation("Successfully saved ExtractedTask {TaskId} to Qdrant", task.Id);
     }
 }
