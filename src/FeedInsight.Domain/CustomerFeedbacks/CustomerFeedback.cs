@@ -1,4 +1,5 @@
-﻿using FeedInsight.Domain.Common.Models;
+using FeedInsight.Domain.Common.Models;
+using FeedInsight.Domain.CustomerFeedbacks.Events;
 
 namespace FeedInsight.Domain.CustomerFeedbacks;
 
@@ -33,6 +34,8 @@ public class CustomerFeedback : Entity
         MetadataJson = metadataJson;
 
         IsProcessedByRouter = false;
+
+        AddDomainEvent(new CustomerFeedbackCreatedEvent(TenantId, Id));
     }
 
 

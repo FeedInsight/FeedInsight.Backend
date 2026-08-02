@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FeedInsight.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(FeedInsightDbContext))]
-    [Migration("20260729190331_InitialCreate")]
+    [Migration("20260802135621_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -62,6 +62,33 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                     b.HasIndex("TenantId");
 
                     b.ToTable("Categories");
+                });
+
+            modelBuilder.Entity("FeedInsight.Domain.Common.Models.OutboxMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Error")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("OccurredOnUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ProcessedOnUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("OutboxMessages");
                 });
 
             modelBuilder.Entity("FeedInsight.Domain.CustomerFeedbacks.CustomerFeedback", b =>
@@ -170,56 +197,6 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                     b.HasIndex("UserStoryId");
 
                     b.ToTable("ExtractedTasks");
-                });
-
-            modelBuilder.Entity("FeedInsight.Domain.JiraSubtasks.JiraSubtask", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("JiraSubtaskKey")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid>("UserStoryId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("JiraSubtaskKey")
-                        .IsUnique();
-
-                    b.HasIndex("TenantId");
-
-                    b.HasIndex("UserStoryId");
-
-                    b.ToTable("JiraSubtasks");
                 });
 
             modelBuilder.Entity("FeedInsight.Domain.Tenants.ApiKey", b =>
@@ -592,21 +569,6 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("UserStoryId")
                         .OnDelete(DeleteBehavior.SetNull);
-                });
-
-            modelBuilder.Entity("FeedInsight.Domain.JiraSubtasks.JiraSubtask", b =>
-                {
-                    b.HasOne("FeedInsight.Domain.Tenants.Tenant", null)
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.HasOne("FeedInsight.Domain.UserStories.UserStory", null)
-                        .WithMany()
-                        .HasForeignKey("UserStoryId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("FeedInsight.Domain.Tenants.ApiKey", b =>

@@ -1,4 +1,6 @@
-﻿namespace FeedInsight.Domain.Common.Models;
+using FeedInsight.Domain.Common.Interfaces;
+
+namespace FeedInsight.Domain.Common.Models;
 
 public abstract class Entity
 {
@@ -21,5 +23,24 @@ public abstract class Entity
     {
         IsDeleted = false;
         DeletedAt = null;
+    }
+
+    private readonly List<IDomainEvent> _domainEvents = new();
+    
+    public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+
+    public void AddDomainEvent(IDomainEvent domainEvent)
+    {
+        _domainEvents.Add(domainEvent);
+    }
+
+    public void RemoveDomainEvent(IDomainEvent domainEvent)
+    {
+        _domainEvents.Remove(domainEvent);
+    }
+
+    public void ClearDomainEvents()
+    {
+        _domainEvents.Clear();
     }
 }
