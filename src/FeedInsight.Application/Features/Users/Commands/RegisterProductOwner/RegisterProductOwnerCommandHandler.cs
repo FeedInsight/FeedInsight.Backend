@@ -2,6 +2,7 @@
 using FeedInsight.Application.Common.Interfaces;
 using FeedInsight.Application.Features.Users.Specifications;
 using FeedInsight.Application.Messaging;
+using FeedInsight.Domain.Categories;
 using FeedInsight.Domain.Common.Errors;
 using FeedInsight.Domain.Common.Interfaces;
 using FeedInsight.Domain.Common.Interfaces.Security;
@@ -15,6 +16,7 @@ public class RegisterProductOwnerCommandHandler : IRequestHandler<RegisterProduc
     private readonly IRepository<Tenant> _tenantRepository;
     private readonly IRepository<User> _userRepository;
     private readonly IRepository<Role> _roleRepository;
+    private readonly IRepository<Category> _categoryRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IUnitOfWork _unitOfWork;
 
@@ -22,12 +24,14 @@ public class RegisterProductOwnerCommandHandler : IRequestHandler<RegisterProduc
         IRepository<Tenant> tenantRepository,
         IRepository<User> userRepository,
         IRepository<Role> roleRepository,
+        IRepository<Category> categoryRepository,
         IPasswordHasher passwordHasher,
         IUnitOfWork unitOfWork)
     {
         _tenantRepository = tenantRepository;
         _userRepository = userRepository;
         _roleRepository = roleRepository;
+        _categoryRepository = categoryRepository;
         _passwordHasher = passwordHasher;
         _unitOfWork = unitOfWork;
     }
@@ -42,6 +46,14 @@ public class RegisterProductOwnerCommandHandler : IRequestHandler<RegisterProduc
 
         var tenant = new Tenant(request.CompanyName);
         await _tenantRepository.AddAsync(tenant, cancellationToken);
+
+        var defaultCategory = new Category(
+            tenantId: tenant.Id,
+            name: "Uncategorized",
+            description: "Use this category ONLY if the feedback does not fit into any other available category.",
+            isSystemDefault: true
+        );
+        await _categoryRepository.AddAsync(defaultCategory, cancellationToken);
 
         var user = new User(
             request.FirstName,

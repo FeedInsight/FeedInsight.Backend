@@ -1,8 +1,11 @@
-﻿using FeedInsight.Domain.Chats;
+﻿using FeedInsight.Domain.Categories;
+using FeedInsight.Domain.Chats;
 using FeedInsight.Domain.Common.Models;
 using FeedInsight.Domain.CustomerFeedbacks;
+using FeedInsight.Domain.ExtractedTasks;
 using FeedInsight.Domain.Tenants;
 using FeedInsight.Domain.Users;
+using FeedInsight.Domain.UserStories;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 
@@ -20,6 +23,9 @@ namespace FeedInsight.Infrastructure.Persistence.Context
         public DbSet<Tenant> Tenants => Set<Tenant>();
         public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
         public DbSet<CustomerFeedback> CustomerFeedbacks => Set<CustomerFeedback>();
+        public DbSet<Category> Categories => Set<Category>();
+        public DbSet<ExtractedTask> ExtractedTasks => Set<ExtractedTask>();
+        public DbSet<UserStory> UserStories => Set<UserStory>();
         public DbSet<ChatSession> ChatSessions => Set<ChatSession>();
 
         public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
