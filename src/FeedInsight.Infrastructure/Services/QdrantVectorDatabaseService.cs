@@ -1,6 +1,13 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using FeedInsight.Application.Common.Interfaces;
-using FeedInsight.Domain.ExtractedTasks;
-using Microsoft.Extensions.Configuration;
+using FeedInsight.Application.Common.Models;
+using FeedInsight.Infrastructure.Options;
+using Microsoft.Extensions.Options;
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
 
@@ -9,133 +16,225 @@ namespace FeedInsight.Infrastructure.Services;
 public class QdrantVectorDatabaseService : IVectorDatabaseService
 {
     private readonly QdrantClient _client;
-    private const string CollectionName = "extracted_tasks";
-    private const ulong VectorSize = 4096; // qwen3-embedding-8b outputs 4096 dimensions
+    private readonly QdrantSettings _settings;
 
-    public QdrantVectorDatabaseService(IConfiguration configuration)
+    public QdrantVectorDatabaseService(QdrantClient client, IOptions<QdrantSettings> options)
     {
-        var url = configuration["Qdrant:Url"];
-        var apiKey = configuration["Qdrant:ApiKey"];
-
-        if (string.IsNullOrWhiteSpace(url) || string.IsNullOrWhiteSpace(apiKey))
-        {
-            throw new InvalidOperationException("Qdrant configuration is missing.");
-        }
-
-        var uri = new Uri(url);
-
-        // Qdrant Cloud gRPC usually uses port 6334.
-        var port = uri.IsDefaultPort ? 6334 : uri.Port;
-
-        // Initialize official Qdrant gRPC client
-        _client = new QdrantClient(
-            host: uri.Host,
-            port: port,
-            https: uri.Scheme == "https",
-            apiKey: apiKey
-        );
+        _client = client;
+        _settings = options.Value;
     }
 
-    public async Task UpsertTaskAsync(ExtractedTask task, ReadOnlyMemory<float> embedding, CancellationToken cancellationToken = default)
+    public async Task UpsertPointAsync<TPayload>(string collectionName, Guid pointId, ReadOnlyMemory<float> embedding, TPayload payload, CancellationToken cancellationToken = default)
     {
-        // 1. Ensure collection exists
-        try
-        {
-            await _client.GetCollectionInfoAsync(CollectionName, cancellationToken);
-        }
-        catch
-        {
-            // Collection doesn't exist, create it
-            await _client.CreateCollectionAsync(
-                collectionName: CollectionName,
-                vectorsConfig: new VectorParams { Size = VectorSize, Distance = Distance.Cosine },
-                cancellationToken: cancellationToken
-            );
+        await EnsureCollectionExistsAsync(collectionName, cancellationToken);
 
-            // Qdrant requires an index to filter by fields.
-            await _client.CreatePayloadIndexAsync(
-                CollectionName,
-                "tenantId",
-                PayloadSchemaType.Keyword,
-                cancellationToken: cancellationToken
-            );
-        }
-
-        var text = $"{task.ExtractedIntent} {task.TechnicalKeywords}".Trim();
-
-        // 2. Prepare Point payload
         var point = new PointStruct
         {
-            Id = task.Id, // Supports Guid natively!
-            Vectors = embedding.ToArray(),
-            Payload =
-            {
-                ["tenantId"] = task.TenantId.ToString(),
-                ["categoryId"] = task.CategoryId.ToString(),
-                ["text"] = text
-            }
+            Id = pointId,
+            Vectors = embedding.ToArray()
         };
 
-        // 3. Upsert
-        await _client.UpsertAsync(CollectionName, new[] { point }, cancellationToken: cancellationToken);
+        var mappedPayload = MapPayload(payload);
+        foreach (var kvp in mappedPayload)
+        {
+            point.Payload.Add(kvp.Key, kvp.Value);
+        }
+
+        await _client.UpsertAsync(collectionName, new[] { point }, cancellationToken: cancellationToken);
     }
 
-    public async Task<IReadOnlyList<VectorSearchResult>> SearchTasksAsync(
+    public async Task UpsertPointsAsync<TPayload>(string collectionName, IReadOnlyList<VectorPoint<TPayload>> points, CancellationToken cancellationToken = default)
+    {
+        await EnsureCollectionExistsAsync(collectionName, cancellationToken);
+
+        var pointStructs = new List<PointStruct>();
+        foreach (var p in points)
+        {
+            var point = new PointStruct
+            {
+                Id = p.Id,
+                Vectors = p.Embedding.ToArray()
+            };
+
+            var mappedPayload = MapPayload(p.Payload);
+            foreach (var kvp in mappedPayload)
+            {
+                point.Payload.Add(kvp.Key, kvp.Value);
+            }
+            pointStructs.Add(point);
+        }
+
+        await _client.UpsertAsync(collectionName, pointStructs, cancellationToken: cancellationToken);
+    }
+
+    public async Task DeletePointAsync(string collectionName, Guid pointId, CancellationToken cancellationToken = default)
+    {
+        await _client.DeleteAsync(collectionName, new[] { (PointId)pointId }, cancellationToken: cancellationToken);
+    }
+
+    public async Task DeletePointsAsync(string collectionName, IReadOnlyList<Guid> pointIds, CancellationToken cancellationToken = default)
+    {
+        var ids = pointIds.Select(id => (PointId)id).ToList();
+        await _client.DeleteAsync(collectionName, ids, cancellationToken: cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<VectorSearchResult<TPayload>>> SearchAsync<TPayload>(
+        string collectionName,
         ReadOnlyMemory<float> queryEmbedding,
         int limit = 5,
-        Guid? tenantId = null,
+        MetadataFilter? filter = null,
         CancellationToken cancellationToken = default)
     {
-        Filter? filter = null;
+        Filter? qdrantFilter = null;
 
-        if (tenantId.HasValue)
+        if (filter != null && (filter.MustMatch?.Any() == true || filter.MustNotMatch?.Any() == true))
         {
-            filter = new Filter
+            qdrantFilter = new Filter();
+
+            if (filter.MustMatch != null)
             {
-                Must = {
-                    new Condition
+                foreach (var match in filter.MustMatch)
+                {
+                    qdrantFilter.Must.Add(new Condition
                     {
                         Field = new FieldCondition
                         {
-                            Key = "tenantId",
-                            Match = new Match { Keyword = tenantId.Value.ToString() }
+                            Key = match.Key,
+                            Match = new Match { Keyword = match.Value?.ToString() ?? string.Empty }
                         }
-                    }
+                    });
                 }
-            };
+            }
+
+            if (filter.MustNotMatch != null)
+            {
+                foreach (var match in filter.MustNotMatch)
+                {
+                    qdrantFilter.MustNot.Add(new Condition
+                    {
+                        Field = new FieldCondition
+                        {
+                            Key = match.Key,
+                            Match = new Match { Keyword = match.Value?.ToString() ?? string.Empty }
+                        }
+                    });
+                }
+            }
         }
 
         var results = await _client.SearchAsync(
-            collectionName: CollectionName,
+            collectionName: collectionName,
             vector: queryEmbedding.ToArray(),
-            filter: filter,
+            filter: qdrantFilter,
             limit: (ulong)limit,
             payloadSelector: true,
             cancellationToken: cancellationToken
         );
 
-        var searchResults = new List<VectorSearchResult>();
+        var searchResults = new List<VectorSearchResult<TPayload>>();
 
         foreach (var result in results)
         {
-            var payload = result.Payload;
             var taskId = Guid.Parse(result.Id.Uuid);
+            var mappedPayload = MapToPayload<TPayload>(result.Payload);
 
-            var tenantStr = payload.TryGetValue("tenantId", out var tId) ? tId.StringValue : null;
-            var categoryStr = payload.TryGetValue("categoryId", out var cId) ? cId.StringValue : null;
-            var text = payload.TryGetValue("text", out var txt) ? txt.StringValue : string.Empty;
-
-            var parsedTenant = Guid.TryParse(tenantStr, out var parsedT) ? parsedT : Guid.Empty;
-            Guid? parsedCategory = Guid.TryParse(categoryStr, out var parsedC) ? parsedC : null;
-
-            searchResults.Add(new VectorSearchResult(
-                taskId,
-                result.Score,
-                text,
-                parsedTenant,
-                parsedCategory));
+            if (mappedPayload != null)
+            {
+                searchResults.Add(new VectorSearchResult<TPayload>(
+                    taskId,
+                    result.Score,
+                    mappedPayload));
+            }
         }
 
         return searchResults;
+    }
+
+
+    private async Task EnsureCollectionExistsAsync(string collectionName, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _client.GetCollectionInfoAsync(collectionName, cancellationToken);
+        }
+        catch
+        {
+            // Collection doesn't exist, create it.
+            // Look up the config, or use a safe default if not found
+            var hasConfig = _settings.Collections.TryGetValue(collectionName, out var config);
+            var vectorSize = hasConfig ? config.VectorSize : 4096; // fallback size
+            
+            Distance distanceMetric = Distance.Cosine;
+            if (hasConfig && Enum.TryParse<Distance>(config.Distance, true, out var parsedDistance))
+            {
+                distanceMetric = parsedDistance;
+            }
+
+            await _client.CreateCollectionAsync(
+                collectionName: collectionName,
+                vectorsConfig: new VectorParams { Size = vectorSize, Distance = distanceMetric },
+                cancellationToken: cancellationToken
+            );
+
+            // Create configured indexes
+            if (hasConfig && config.IndexFields != null)
+            {
+                foreach (var field in config.IndexFields)
+                {
+                    await _client.CreatePayloadIndexAsync(
+                        collectionName,
+                        field,
+                        PayloadSchemaType.Keyword,
+                        cancellationToken: cancellationToken
+                    );
+                }
+            }
+        }
+    }
+
+    // Helper to map complex objects to Qdrant's Payload map
+    private Dictionary<string, Value> MapPayload<TPayload>(TPayload payload)
+    {
+        var dict = new Dictionary<string, Value>();
+        if (payload == null) return dict;
+
+        var jsonElement = JsonSerializer.SerializeToElement(payload);
+        foreach (var prop in jsonElement.EnumerateObject())
+        {
+            dict[prop.Name] = MapJsonElementToValue(prop.Value);
+        }
+        return dict;
+    }
+
+    private Value MapJsonElementToValue(JsonElement element)
+    {
+        return element.ValueKind switch
+        {
+            JsonValueKind.String => element.GetString() ?? string.Empty,
+            JsonValueKind.Number => element.TryGetInt64(out var l) ? (Value)l : (Value)element.GetDouble(),
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.Null => new Value { NullValue = Qdrant.Client.Grpc.NullValue.NullValue },
+            _ => element.GetRawText()
+        };
+    }
+
+    // Helper to map Qdrant's Payload map back to complex objects
+    private TPayload? MapToPayload<TPayload>(IReadOnlyDictionary<string, Value> payloadMap)
+    {
+        var dict = new Dictionary<string, object?>();
+        foreach (var kvp in payloadMap)
+        {
+            dict[kvp.Key] = kvp.Value.KindCase switch
+            {
+                Value.KindOneofCase.StringValue => kvp.Value.StringValue,
+                Value.KindOneofCase.IntegerValue => kvp.Value.IntegerValue,
+                Value.KindOneofCase.DoubleValue => kvp.Value.DoubleValue,
+                Value.KindOneofCase.BoolValue => kvp.Value.BoolValue,
+                _ => null
+            };
+        }
+        var json = JsonSerializer.Serialize(dict);
+        return JsonSerializer.Deserialize<TPayload>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
     }
 }

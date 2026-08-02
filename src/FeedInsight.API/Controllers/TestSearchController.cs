@@ -1,4 +1,5 @@
 using FeedInsight.Application.Common.Interfaces;
+using FeedInsight.Application.Common.Models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FeedInsight.API.Controllers;
@@ -28,7 +29,15 @@ public class TestSearchController : ControllerBase
         var embedding = await _embeddingService.GenerateEmbeddingAsync(query);
 
         // 2. Search Qdrant
-        var results = await _vectorDatabaseService.SearchTasksAsync(embedding, limit, tenantId);
+        var filter = tenantId.HasValue
+            ? new MetadataFilter { MustMatch = new Dictionary<string, object> { { "TenantId", tenantId.Value } } }
+            : null;
+
+        var results = await _vectorDatabaseService.SearchAsync<ExtractedTaskPayload>(
+            "extracted_tasks",
+            embedding,
+            limit,
+            filter);
 
         return Ok(results);
     }
