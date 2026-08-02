@@ -1,4 +1,5 @@
-﻿using FeedInsight.Domain.Common.Models;
+﻿using FeedInsight.Domain.Chats;
+using FeedInsight.Domain.Common.Models;
 using FeedInsight.Domain.CustomerFeedbacks;
 using FeedInsight.Domain.Tenants;
 using FeedInsight.Domain.Users;
@@ -19,6 +20,9 @@ namespace FeedInsight.Infrastructure.Persistence.Context
         public DbSet<Tenant> Tenants => Set<Tenant>();
         public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
         public DbSet<CustomerFeedback> CustomerFeedbacks => Set<CustomerFeedback>();
+        public DbSet<ChatSession> ChatSessions => Set<ChatSession>();
+
+        public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
