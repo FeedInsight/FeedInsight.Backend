@@ -1,6 +1,7 @@
 using FeedInsight.Application.Features.Tenants.Commands.ConfigureJira;
 using FeedInsight.Application.Features.Tenants.Commands.CreateApiKey;
 using FeedInsight.Application.Features.Tenants.Commands.CreateTenantOwner;
+using FeedInsight.Application.Features.Tenants.Commands.RevokeApiKey;
 using FeedInsight.Application.Features.Tenants.Commands.ToggleTenantStatus;
 using FeedInsight.Application.Features.Tenants.Commands.UpdateTenant;
 using FeedInsight.Application.Features.Tenants.Queries.GetApiKeys;
@@ -69,6 +70,18 @@ public class TenantsController : ApiController
 
         return result.Match(
             plainTextKey => OkResponse(new { ApiKey = plainTextKey, Message = "API Key generated successfully. Please copy it now as it will not be shown again." }),
+            errors => Problem(errors)
+        );
+    }
+
+    [HttpDelete("my-company/api-keys/{id:guid}")]
+    [Authorize(Roles = Role.ProductOwner)]
+    public async Task<IActionResult> RevokeApiKey(Guid id)
+    {
+        var result = await _mediator.SendAsync(new RevokeApiKeyCommand(id));
+
+        return result.Match(
+            success => OkResponse(new { Message = "API Key successfully revoked." }),
             errors => Problem(errors)
         );
     }
