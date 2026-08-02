@@ -1,4 +1,4 @@
-﻿using FeedInsight.Domain.Categories;
+using FeedInsight.Domain.Categories;
 using FeedInsight.Domain.Common.Models;
 using FeedInsight.Domain.CustomerFeedbacks;
 using FeedInsight.Domain.ExtractedTasks;
@@ -25,6 +25,7 @@ namespace FeedInsight.Infrastructure.Persistence.Context
         public DbSet<Category> Categories => Set<Category>();
         public DbSet<ExtractedTask> ExtractedTasks => Set<ExtractedTask>();
         public DbSet<UserStory> UserStories => Set<UserStory>();
+        public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -76,7 +77,32 @@ namespace FeedInsight.Infrastructure.Persistence.Context
                 }
             }
 
+            ConvertDomainEventsToOutboxMessages();
+
             return base.SaveChangesAsync(cancellationToken);
+        }
+
+        private void ConvertDomainEventsToOutboxMessages()
+        {
+            var outboxMessages = ChangeTracker
+                .Entries<Entity>()
+                .Select(x => x.Entity)
+                .SelectMany(entity =>
+                {
+                    var domainEvents = entity.DomainEvents.ToList();
+                    entity.ClearDomainEvents();
+                    return domainEvents;
+                })
+                .Select(domainEvent => new OutboxMessage
+                {
+                    Id = Guid.NewGuid(),
+                    OccurredOnUtc = DateTime.UtcNow,
+                    Type = domainEvent.GetType().Name,
+                    Content = System.Text.Json.JsonSerializer.Serialize(domainEvent, domainEvent.GetType())
+                })
+                .ToList();
+
+            Set<OutboxMessage>().AddRange(outboxMessages);
         }
     }
 }

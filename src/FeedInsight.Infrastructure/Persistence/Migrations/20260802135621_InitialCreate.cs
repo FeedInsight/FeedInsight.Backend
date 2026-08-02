@@ -14,6 +14,22 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
+                name: "OutboxMessages",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Type = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Content = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    OccurredOnUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ProcessedOnUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    Error = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_OutboxMessages", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Roles",
                 columns: table => new
                 {
@@ -284,37 +300,6 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                         onDelete: ReferentialAction.SetNull);
                 });
 
-            migrationBuilder.CreateTable(
-                name: "JiraSubtasks",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    TenantId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    UserStoryId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    JiraSubtaskKey = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    Title = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
-                    Status = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
-                    DeletedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_JiraSubtasks", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_JiraSubtasks_Tenants_TenantId",
-                        column: x => x.TenantId,
-                        principalTable: "Tenants",
-                        principalColumn: "Id");
-                    table.ForeignKey(
-                        name: "FK_JiraSubtasks_UserStories_UserStoryId",
-                        column: x => x.UserStoryId,
-                        principalTable: "UserStories",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
             migrationBuilder.InsertData(
                 table: "Roles",
                 columns: new[] { "Id", "CreatedAt", "DeletedAt", "IsDeleted", "Name", "UpdatedAt" },
@@ -386,22 +371,6 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                 column: "UserStoryId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_JiraSubtasks_JiraSubtaskKey",
-                table: "JiraSubtasks",
-                column: "JiraSubtaskKey",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_JiraSubtasks_TenantId",
-                table: "JiraSubtasks",
-                column: "TenantId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_JiraSubtasks_UserStoryId",
-                table: "JiraSubtasks",
-                column: "UserStoryId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_RefreshTokens_Token",
                 table: "RefreshTokens",
                 column: "Token",
@@ -460,7 +429,7 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                 name: "ExtractedTasks");
 
             migrationBuilder.DropTable(
-                name: "JiraSubtasks");
+                name: "OutboxMessages");
 
             migrationBuilder.DropTable(
                 name: "RefreshTokens");
