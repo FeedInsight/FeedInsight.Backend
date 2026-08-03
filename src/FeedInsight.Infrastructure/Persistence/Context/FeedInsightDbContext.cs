@@ -26,6 +26,7 @@ namespace FeedInsight.Infrastructure.Persistence.Context
         public DbSet<Category> Categories => Set<Category>();
         public DbSet<ExtractedTask> ExtractedTasks => Set<ExtractedTask>();
         public DbSet<UserStory> UserStories => Set<UserStory>();
+        public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
         public DbSet<ChatSession> ChatSessions => Set<ChatSession>();
 
         public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
@@ -80,7 +81,32 @@ namespace FeedInsight.Infrastructure.Persistence.Context
                 }
             }
 
+            ConvertDomainEventsToOutboxMessages();
+
             return base.SaveChangesAsync(cancellationToken);
+        }
+
+        private void ConvertDomainEventsToOutboxMessages()
+        {
+            var outboxMessages = ChangeTracker
+                .Entries<Entity>()
+                .Select(x => x.Entity)
+                .SelectMany(entity =>
+                {
+                    var domainEvents = entity.DomainEvents.ToList();
+                    entity.ClearDomainEvents();
+                    return domainEvents;
+                })
+                .Select(domainEvent => new OutboxMessage
+                {
+                    Id = Guid.NewGuid(),
+                    OccurredOnUtc = DateTime.UtcNow,
+                    Type = domainEvent.GetType().Name,
+                    Content = System.Text.Json.JsonSerializer.Serialize(domainEvent, domainEvent.GetType())
+                })
+                .ToList();
+
+            Set<OutboxMessage>().AddRange(outboxMessages);
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿using ErrorOr;
+using ErrorOr;
 using FeedInsight.Application.Common.Interfaces;
 using FeedInsight.Application.Features.Categories.Specifications;
 using FeedInsight.Application.Features.Jira.Specifications;
@@ -11,9 +11,12 @@ using FeedInsight.Domain.Tenants;
 using FeedInsight.Domain.UserStories;
 using FeedInsight.Domain.UserStories.Enums;
 using Microsoft.Extensions.Logging;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using FeedInsight.Application.Common.Interfaces.Security;
+using FeedInsight.Application.Common.Options;
+using FeedInsight.Application.Features.Jira.Models;
+using Microsoft.Extensions.Options;
 
 namespace FeedInsight.Application.Features.Jira.Commands.ProcessJiraWebhook;
 
@@ -25,6 +28,8 @@ public class ProcessJiraWebhookCommandHandler : IRequestHandler<ProcessJiraWebho
     private readonly IEncryptor _encryptor;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<ProcessJiraWebhookCommandHandler> _logger;
+    private readonly IJiraSignatureValidator _signatureValidator;
+    private readonly JiraSettings _jiraSettings;
 
     public ProcessJiraWebhookCommandHandler(
         IRepository<Tenant> tenantRepository,
@@ -32,7 +37,9 @@ public class ProcessJiraWebhookCommandHandler : IRequestHandler<ProcessJiraWebho
         IRepository<Category> categoryRepository,
         IEncryptor encryptor,
         IUnitOfWork unitOfWork,
-        ILogger<ProcessJiraWebhookCommandHandler> logger)
+        ILogger<ProcessJiraWebhookCommandHandler> logger,
+        IJiraSignatureValidator signatureValidator,
+        IOptions<JiraSettings> jiraSettingsOptions)
     {
         _tenantRepository = tenantRepository;
         _userStoryRepository = userStoryRepository;
@@ -40,6 +47,8 @@ public class ProcessJiraWebhookCommandHandler : IRequestHandler<ProcessJiraWebho
         _encryptor = encryptor;
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _signatureValidator = signatureValidator;
+        _jiraSettings = jiraSettingsOptions.Value;
     }
 
     public async Task<ErrorOr<Success>> HandleAsync(ProcessJiraWebhookCommand request, CancellationToken cancellationToken = default)
@@ -53,7 +62,7 @@ public class ProcessJiraWebhookCommandHandler : IRequestHandler<ProcessJiraWebho
 
         string secret = _encryptor.Decrypt(tenant.JiraWebhookSecret);
 
-        if (!IsSignatureValid(request.RawPayload, secret, request.SignatureHeader))
+        if (!_signatureValidator.IsSignatureValid(request.RawPayload, secret, request.SignatureHeader))
         {
             _logger.LogWarning("Webhook failed: Invalid HMAC Signature for Tenant {TenantId}.", request.TenantId);
             return Error.Unauthorized("Jira.InvalidSignature", "The webhook signature is invalid.");
@@ -61,26 +70,22 @@ public class ProcessJiraWebhookCommandHandler : IRequestHandler<ProcessJiraWebho
 
         try
         {
-            using var document = JsonDocument.Parse(request.RawPayload);
-            var root = document.RootElement;
+            var payload = JsonSerializer.Deserialize<JiraWebhookPayloadDto>(request.RawPayload, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            if (payload == null || payload.Issue == null) return Result.Success;
 
-            string webhookEvent = root.GetProperty("webhookEvent").GetString() ?? "";
+            string webhookEvent = payload.WebhookEvent;
 
             // We now care about Created, Updated, and Deleted
             var allowedEvents = new[] { "jira:issue_created", "jira:issue_updated", "jira:issue_deleted" };
             if (!allowedEvents.Contains(webhookEvent)) return Result.Success;
 
-            var issue = root.GetProperty("issue");
-            string ticketKey = issue.GetProperty("key").GetString() ?? "";
+            string ticketKey = payload.Issue.Key;
+            string title = payload.Issue.Fields.Summary ?? "Untitled";
+            string status = payload.Issue.Fields.Status.Name ?? "To Do";
+            string issueType = payload.Issue.Fields.Issuetype.Name ?? "";
 
-            var fields = issue.GetProperty("fields");
-            string title = fields.GetProperty("summary").GetString() ?? "Untitled";
-            string status = fields.GetProperty("status").GetProperty("name").GetString() ?? "To Do";
-            string issueType = fields.GetProperty("issuetype").GetProperty("name").GetString() ?? "";
-
-            bool isSubtask = issueType.Equals("Sub-task", StringComparison.OrdinalIgnoreCase);
-
-            if (isSubtask)
+            // Check if issue type is allowed in settings
+            if (!_jiraSettings.AllowedIssueTypes.Contains(issueType, StringComparer.OrdinalIgnoreCase))
             {
                 return Result.Success;
             }
@@ -124,19 +129,4 @@ public class ProcessJiraWebhookCommandHandler : IRequestHandler<ProcessJiraWebho
         return Result.Success;
     }
 
-    private static bool IsSignatureValid(string payload, string secret, string signatureHeader)
-    {
-        if (!signatureHeader.StartsWith("sha256=")) return false;
-
-        string providedHash = signatureHeader.Substring(7);
-
-        var secretBytes = Encoding.UTF8.GetBytes(secret);
-        var payloadBytes = Encoding.UTF8.GetBytes(payload);
-
-        using var hmac = new HMACSHA256(secretBytes);
-        var computedHashBytes = hmac.ComputeHash(payloadBytes);
-        var computedHashString = Convert.ToHexString(computedHashBytes).ToLowerInvariant();
-
-        return providedHash == computedHashString;
-    }
 }

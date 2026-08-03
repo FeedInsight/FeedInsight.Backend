@@ -1,5 +1,7 @@
-﻿using FeedInsight.Application.Common.Interfaces;
+using FeedInsight.Application.Common.Interfaces;
+using FeedInsight.Application.Common.Options;
 using FeedInsight.Application.Features.Categories.Specifications;
+using FeedInsight.Application.Features.Jira.Models;
 using FeedInsight.Application.Features.UserStories.Specifications;
 using FeedInsight.Domain.Categories;
 using FeedInsight.Domain.Common.Interfaces;
@@ -8,6 +10,7 @@ using FeedInsight.Domain.Tenants;
 using FeedInsight.Domain.UserStories;
 using FeedInsight.Domain.UserStories.Enums;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System;
 using System.Linq;
 using System.Net.Http;
@@ -27,6 +30,7 @@ public class JiraSyncService : IJiraSyncService
     private readonly IEncryptor _encryptor;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<JiraSyncService> _logger;
+    private readonly JiraSettings _jiraSettings;
 
     public JiraSyncService(
         IRepository<Tenant> tenantRepository,
@@ -35,7 +39,8 @@ public class JiraSyncService : IJiraSyncService
         IUnitOfWork unitOfWork,
         IEncryptor encryptor,
         IHttpClientFactory httpClientFactory,
-        ILogger<JiraSyncService> logger)
+        ILogger<JiraSyncService> logger,
+        IOptions<JiraSettings> jiraSettingsOptions)
     {
         _tenantRepository = tenantRepository;
         _categoryRepository = categoryRepository;
@@ -44,40 +49,46 @@ public class JiraSyncService : IJiraSyncService
         _encryptor = encryptor;
         _httpClientFactory = httpClientFactory;
         _logger = logger;
+        _jiraSettings = jiraSettingsOptions.Value;
+    }
+
+    private async Task<HttpClient?> CreateJiraClientAsync(Guid tenantId, CancellationToken cancellationToken)
+    {
+        var tenant = await _tenantRepository.GetByIdAsync(tenantId, cancellationToken);
+        if (tenant is null || string.IsNullOrWhiteSpace(tenant.JiraBaseUrl) || string.IsNullOrWhiteSpace(tenant.JiraEncryptedToken))
+        {
+            _logger.LogWarning("JiraSync: Tenant {TenantId} has missing credentials.", tenantId);
+            return null;
+        }
+
+        string token = _encryptor.Decrypt(tenant.JiraEncryptedToken);
+        var client = _httpClientFactory.CreateClient("JiraClient");
+        client.BaseAddress = new Uri(tenant.JiraBaseUrl);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", token);
+        client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        return client;
     }
 
     public async Task TriggerInitialBulkSyncAsync(Guid tenantId, CancellationToken cancellationToken = default)
     {
         try
         {
-            // 1. Fetch Tenant & Decrypt Credentials
-            var tenant = await _tenantRepository.GetByIdAsync(tenantId, cancellationToken);
-            if (tenant is null || string.IsNullOrWhiteSpace(tenant.JiraBaseUrl) || string.IsNullOrWhiteSpace(tenant.JiraEncryptedToken))
-            {
-                _logger.LogWarning("JiraSync aborted. Tenant {TenantId} has missing credentials.", tenantId);
-                return;
-            }
+            var client = await CreateJiraClientAsync(tenantId, cancellationToken);
+            if (client == null) return;
 
-            string token = _encryptor.Decrypt(tenant.JiraEncryptedToken);
-
-            // 2. Fetch the "Uncategorized" Category to act as a safe fallback
-            var categories = await _categoryRepository.ListAsync(new CategoriesByTenantSpec(tenant.Id), cancellationToken);
+            var categories = await _categoryRepository.ListAsync(new CategoriesByTenantSpec(tenantId), cancellationToken);
             var fallbackCategory = categories.FirstOrDefault(c => c.IsSystemDefault);
-            if (fallbackCategory is null) return; // Should never happen due to DB seeding
+            if (fallbackCategory is null) return;
 
-            // 3. Prepare HttpClient
-            var client = _httpClientFactory.CreateClient("JiraClient");
-            client.BaseAddress = new Uri(tenant.JiraBaseUrl);
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", token);
-            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-
-            // 4. Fetch active issues from Jira using JQL with Pagination
-            // Added 'issuetype in standardIssueTypes()' to explicitly tell Jira NOT to send sub-tasks.
-            string jql = "statusCategory != Done AND issuetype in standardIssueTypes() ORDER BY updated DESC";
+            // Build JQL to only include allowed issue types
+            var allowedTypes = string.Join(", ", _jiraSettings.AllowedIssueTypes.Select(t => $"\"{t}\""));
+            string jql = $"statusCategory != Done AND issuetype in ({allowedTypes}) ORDER BY updated DESC";
 
             int maxResults = 100;
             string? nextPageToken = null;
             bool hasMore = true;
+            
+            var jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
             while (hasMore)
             {
@@ -99,75 +110,41 @@ public class JiraSyncService : IJiraSyncService
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorResponse = await response.Content.ReadAsStringAsync(cancellationToken);
-                    _logger.LogError("Jira API returned {StatusCode} for Tenant {TenantId}. Details: {Error}. Stopping sync.", response.StatusCode, tenant.Id, errorResponse);
+                    _logger.LogError("Jira API returned {StatusCode} for Tenant {TenantId}. Details: {Error}. Stopping sync.", response.StatusCode, tenantId, errorResponse);
                     break;
                 }
 
                 var jsonString = await response.Content.ReadAsStringAsync(cancellationToken);
-                using var document = JsonDocument.Parse(jsonString);
-                var root = document.RootElement;
+                var searchResponse = JsonSerializer.Deserialize<JiraSearchResponseDto>(jsonString, jsonOptions);
 
-                var issues = root.GetProperty("issues").EnumerateArray();
-
-                foreach (var issue in issues)
+                if (searchResponse?.Issues == null)
                 {
-                    // Defensively parse key
-                    string key = issue.TryGetProperty("key", out var keyElement) && keyElement.ValueKind == JsonValueKind.String
-                        ? keyElement.GetString() ?? ""
-                        : "";
+                    break;
+                }
 
-                    // Defensively parse fields object
-                    if (!issue.TryGetProperty("fields", out var fields) || fields.ValueKind != JsonValueKind.Object)
+                foreach (var issue in searchResponse.Issues)
+                {
+                    string key = issue.Key;
+                    string title = issue.Fields?.Summary ?? "Untitled";
+                    string status = issue.Fields?.Status?.Name ?? "To Do";
+                    string issueType = issue.Fields?.Issuetype?.Name ?? "";
+
+                    if (!_jiraSettings.AllowedIssueTypes.Contains(issueType, StringComparer.OrdinalIgnoreCase))
                     {
                         continue;
                     }
 
-                    // Defensively parse summary
-                    string title = "Untitled";
-                    if (fields.TryGetProperty("summary", out var summaryElement) && summaryElement.ValueKind == JsonValueKind.String)
-                    {
-                        title = summaryElement.GetString() ?? "Untitled";
-                    }
-
-                    // Defensively parse issuetype
-                    string issueType = "";
-                    if (fields.TryGetProperty("issuetype", out var issueTypeElement) && issueTypeElement.ValueKind == JsonValueKind.Object)
-                    {
-                        if (issueTypeElement.TryGetProperty("name", out var typeNameElement) && typeNameElement.ValueKind == JsonValueKind.String)
-                        {
-                            issueType = typeNameElement.GetString() ?? "";
-                        }
-                    }
-
-                    // Fallback defense in case a custom sub-task type slips past standardIssueTypes()
-                    if (issueType.Contains("Sub-task", StringComparison.OrdinalIgnoreCase))
-                    {
-                        continue;
-                    }
-
-                    // Defensively parse status
-                    string status = "To Do";
-                    if (fields.TryGetProperty("status", out var statusElement) && statusElement.ValueKind == JsonValueKind.Object)
-                    {
-                        if (statusElement.TryGetProperty("name", out var statusNameElement) && statusNameElement.ValueKind == JsonValueKind.String)
-                        {
-                            status = statusNameElement.GetString() ?? "To Do";
-                        }
-                    }
-
-                    var existingStory = await _userStoryRepository.SingleOrDefaultAsync(new UserStoryByJiraKeySpec(tenant.Id, key), cancellationToken);
+                    var existingStory = await _userStoryRepository.SingleOrDefaultAsync(new UserStoryByJiraKeySpec(tenantId, key), cancellationToken);
 
                     if (existingStory is not null)
                     {
-                        // Update existing issue instead of duplicating it
                         existingStory.UpdateFromJiraWebhook(title, existingStory.AcceptanceCriteria, UserStoryStatus.Synced);
                         await _userStoryRepository.UpdateAsync(existingStory, cancellationToken);
                     }
                     else
                     {
-                        // Treat all standard issues (Epic, Story, Task, Bug) as a generic UserStory in our Domain
                         var story = new UserStory(
-                            tenantId: tenant.Id,
+                            tenantId: tenantId,
                             categoryId: fallbackCategory.Id,
                             source: UserStorySource.Jira,
                             title: title,
@@ -180,24 +157,110 @@ public class JiraSyncService : IJiraSyncService
                     }
                 }
 
-                if (root.TryGetProperty("nextPageToken", out var tokenProp) && tokenProp.ValueKind == JsonValueKind.String)
-                {
-                    nextPageToken = tokenProp.GetString();
-                    hasMore = !string.IsNullOrEmpty(nextPageToken);
-                }
-                else
-                {
-                    hasMore = false;
-                }
+                nextPageToken = searchResponse.NextPageToken;
+                hasMore = !string.IsNullOrEmpty(nextPageToken);
             }
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
-            _logger.LogInformation("Successfully completed Initial Jira Sync for Tenant {TenantId}", tenant.Id);
+            _logger.LogInformation("Successfully completed Initial Jira Sync for Tenant {TenantId}", tenantId);
 
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "An error occurred during Jira sync for Tenant {TenantId}", tenantId);
+        }
+    }
+
+    public async Task<JiraIssueDto?> GetIssueByKeyAsync(Guid tenantId, string issueKey, CancellationToken cancellationToken = default)
+    {
+        var client = await CreateJiraClientAsync(tenantId, cancellationToken);
+        if (client == null) return null;
+
+        var response = await client.GetAsync($"/rest/api/3/issue/{issueKey}", cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogWarning("Failed to fetch Jira issue {IssueKey} for Tenant {TenantId}.", issueKey, tenantId);
+            return null;
+        }
+
+        var jsonString = await response.Content.ReadAsStringAsync(cancellationToken);
+        return JsonSerializer.Deserialize<JiraIssueDto>(jsonString, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+    }
+
+    public async Task PushStoryToJiraAsync(Guid tenantId, UserStory story, CancellationToken cancellationToken = default)
+    {
+        var client = await CreateJiraClientAsync(tenantId, cancellationToken);
+        if (client == null) return;
+        
+        var payload = new
+        {
+            fields = new
+            {
+                summary = story.Title,
+                description = new 
+                {
+                    type = "doc",
+                    version = 1,
+                    content = new[] 
+                    {
+                        new {
+                            type = "paragraph",
+                            content = new[] 
+                            {
+                                new { text = story.AcceptanceCriteria ?? "", type = "text" }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        if (!string.IsNullOrEmpty(story.JiraTicketKey))
+        {
+            var content = new StringContent(JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
+            var response = await client.PutAsync($"/rest/api/3/issue/{story.JiraTicketKey}", content, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync(cancellationToken);
+                _logger.LogError("Failed to update Jira issue {IssueKey}: {Error}", story.JiraTicketKey, error);
+            }
+        }
+        else
+        {
+            if (string.IsNullOrWhiteSpace(_jiraSettings.DefaultProjectKey))
+            {
+                _logger.LogWarning("Cannot create Jira issue because DefaultProjectKey is missing in JiraSettings.");
+                return;
+            }
+
+            var createPayload = new
+            {
+                fields = new
+                {
+                    project = new { key = _jiraSettings.DefaultProjectKey },
+                    summary = story.Title,
+                    description = payload.fields.description,
+                    issuetype = new { name = _jiraSettings.AllowedIssueTypes.FirstOrDefault() ?? "Story" }
+                }
+            };
+
+            var content = new StringContent(JsonSerializer.Serialize(createPayload), System.Text.Encoding.UTF8, "application/json");
+            var response = await client.PostAsync("/rest/api/3/issue", content, cancellationToken);
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync(cancellationToken);
+                _logger.LogError("Failed to create Jira issue: {Error}", error);
+            }
+            else
+            {
+                var jsonString = await response.Content.ReadAsStringAsync(cancellationToken);
+                using var document = JsonDocument.Parse(jsonString);
+                if (document.RootElement.TryGetProperty("key", out var keyElement))
+                {
+                    _logger.LogInformation("Successfully created Jira issue {IssueKey}", keyElement.GetString());
+                }
+            }
         }
     }
 }

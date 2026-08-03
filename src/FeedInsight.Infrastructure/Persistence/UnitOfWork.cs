@@ -1,6 +1,8 @@
-﻿using FeedInsight.Domain.Common.Interfaces;
+using FeedInsight.Domain.Common.Interfaces;
+using FeedInsight.Domain.Common.Models;
 using FeedInsight.Infrastructure.Persistence.Context;
 using Microsoft.EntityFrameworkCore.Storage;
+using System.Text.Json;
 
 namespace FeedInsight.Infrastructure.Persistence;
 
