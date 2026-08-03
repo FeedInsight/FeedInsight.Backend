@@ -1,4 +1,5 @@
-using FeedInsight.Domain.Categories;
+﻿using FeedInsight.Domain.Categories;
+using FeedInsight.Domain.Chats;
 using FeedInsight.Domain.Common.Models;
 using FeedInsight.Domain.CustomerFeedbacks;
 using FeedInsight.Domain.ExtractedTasks;
@@ -26,6 +27,9 @@ namespace FeedInsight.Infrastructure.Persistence.Context
         public DbSet<ExtractedTask> ExtractedTasks => Set<ExtractedTask>();
         public DbSet<UserStory> UserStories => Set<UserStory>();
         public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+        public DbSet<ChatSession> ChatSessions => Set<ChatSession>();
+
+        public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
