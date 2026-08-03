@@ -23,6 +23,7 @@ public static class DependencyInjection
         services.AddScoped<ITenantResolver, TenantResolver>();
 
         services.AddJwtAuthentication(configuration);
+        services.AddFrontendCorsPolicy(configuration);
 
         services.AddSingleton<QdrantClient>(sp =>
         {
