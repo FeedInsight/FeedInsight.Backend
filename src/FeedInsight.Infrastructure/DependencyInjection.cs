@@ -14,6 +14,7 @@ public static class DependencyInjection
         services.AddSecurity();
         services.AddMessaging();
         services.AddSemanticKernelAgents();
+        services.AddProductAssistant();
         services.AddEmbeddings(configuration);
         services.AddVectorDatabase();
 

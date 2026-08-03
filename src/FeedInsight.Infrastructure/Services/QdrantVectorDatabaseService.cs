@@ -95,14 +95,7 @@ public class QdrantVectorDatabaseService : IVectorDatabaseService
             {
                 foreach (var match in filter.MustMatch)
                 {
-                    qdrantFilter.Must.Add(new Condition
-                    {
-                        Field = new FieldCondition
-                        {
-                            Key = match.Key,
-                            Match = new Match { Keyword = match.Value?.ToString() ?? string.Empty }
-                        }
-                    });
+                    qdrantFilter.Must.Add(BuildFieldCondition(match.Key, match.Value));
                 }
             }
 
@@ -110,14 +103,7 @@ public class QdrantVectorDatabaseService : IVectorDatabaseService
             {
                 foreach (var match in filter.MustNotMatch)
                 {
-                    qdrantFilter.MustNot.Add(new Condition
-                    {
-                        Field = new FieldCondition
-                        {
-                            Key = match.Key,
-                            Match = new Match { Keyword = match.Value?.ToString() ?? string.Empty }
-                        }
-                    });
+                    qdrantFilter.MustNot.Add(BuildFieldCondition(match.Key, match.Value));
                 }
             }
         }
@@ -204,6 +190,33 @@ public class QdrantVectorDatabaseService : IVectorDatabaseService
             dict[prop.Name] = MapJsonElementToValue(prop.Value);
         }
         return dict;
+    }
+
+    private static Condition BuildFieldCondition(string key, object? value)
+    {
+        return new Condition
+        {
+            Field = new FieldCondition
+            {
+                Key = key,
+                Match = new Match { Keyword = NormalizeFilterValue(value) }
+            }
+        };
+    }
+
+    private static string NormalizeFilterValue(object? value)
+    {
+        if (value is null)
+        {
+            return string.Empty;
+        }
+
+        if (value is Guid guid)
+        {
+            return guid.ToString();
+        }
+
+        return value.ToString() ?? string.Empty;
     }
 
     private Value MapJsonElementToValue(JsonElement element)
