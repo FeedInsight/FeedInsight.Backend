@@ -1,6 +1,7 @@
 ﻿using ErrorOr;
 using FeedInsight.Application.Common.Interfaces;
 using FeedInsight.Application.Features.ChatAssistant.DTOs;
+using FeedInsight.Application.Features.ChatAssistant.Queries.AskProductAssistant;
 using FeedInsight.Application.Features.ChatAssistant.Specifications;
 using FeedInsight.Application.Messaging;
 using FeedInsight.Domain.Chats;
@@ -17,18 +18,21 @@ public class SendChatMessageCommandHandler
     private readonly ICurrentUserService _currentUserService;
     private readonly ITenantResolver _tenantResolver;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IMediator _mediator;
 
 
     public SendChatMessageCommandHandler(
         IRepository<ChatSession> sessionRepository,
         ICurrentUserService currentUserService,
         ITenantResolver tenantResolver,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IMediator mediator)
     {
         _sessionRepository = sessionRepository;
         _currentUserService = currentUserService;
         _tenantResolver = tenantResolver;
         _unitOfWork = unitOfWork;
+        _mediator = mediator;
     }
 
 
@@ -80,18 +84,20 @@ public class SendChatMessageCommandHandler
 
         var userMessage = session.Messages.Last();
 
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+        var assistantResult = await _mediator.SendAsync(
+            new AskProductAssistantQuery(request.SessionId, request.Content),
+            cancellationToken);
 
-        // Temporary dummy AI response
-        var assistantContent =
-            "There are 3 open stories referencing payment failures: Story-101, Story-102, Story-103.";
+        if (assistantResult.IsError)
+        {
+            return assistantResult.Errors;
+        }
 
-
-
-        // Save assistant message
         session.AddMessage(
             ChatRole.Assistant,
-            assistantContent);
+            assistantResult.Value);
 
 
 
