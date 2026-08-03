@@ -1,0 +1,11 @@
+@FeedInsight.API_HostAddress = http://localhost:5122
+
+POST {{FeedInsight.API_HostAddress}}/api/Feeds
+Accept: application/json
+Content-Type: application/json
+
+{
+  "title": "My First Feed",
+  "content": "This is the content of the feed exploring Clean Architecture and custom Mediators."
+}
+###
