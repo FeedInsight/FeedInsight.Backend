@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FeedInsight.API/FeedInsight.API.csproj" />
+    <Project Path="src/FeedInsight.Application/FeedInsight.Application.csproj" />
+    <Project Path="src/FeedInsight.Domain/FeedInsight.Domain.csproj" />
+    <Project Path="src/FeedInsight.Infrastructure/FeedInsight.Infrastructure.csproj" />
+  </Folder>
+</Solution>
