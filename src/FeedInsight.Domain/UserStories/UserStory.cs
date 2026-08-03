@@ -1,5 +1,6 @@
-﻿using FeedInsight.Domain.Common.Models;
+using FeedInsight.Domain.Common.Models;
 using FeedInsight.Domain.UserStories.Enums;
+using FeedInsight.Domain.UserStories.Events;
 
 namespace FeedInsight.Domain.UserStories;
 
@@ -43,6 +44,8 @@ public class UserStory : Entity
 
         UrgencyScore = 0;
         Status = source == UserStorySource.Jira ? UserStoryStatus.Synced : UserStoryStatus.Draft;
+
+        AddDomainEvent(new UserStoryCreatedEvent(TenantId, Id));
     }
 
     public void UpdateFromJiraWebhook(string title, string? acceptanceCriteria, UserStoryStatus status)
@@ -50,10 +53,13 @@ public class UserStory : Entity
         Title = title;
         AcceptanceCriteria = acceptanceCriteria;
         Status = status;
+
+        AddDomainEvent(new UserStoryUpdatedEvent(TenantId, Id));
     }
 
     public void IncreaseUrgency(int amount = 1)
     {
         UrgencyScore += amount;
+        AddDomainEvent(new UserStoryUrgencyIncreasedEvent(TenantId, Id));
     }
 }

@@ -98,7 +98,7 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                     b.HasIndex("TenantId");
 
                     b.ToTable("ChatMessages");
-                });
+                }));
 
             modelBuilder.Entity("FeedInsight.Domain.Chats.ChatSession", b =>
                 {
