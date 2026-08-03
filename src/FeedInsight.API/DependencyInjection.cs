@@ -2,6 +2,7 @@ using FeedInsight.API.Extensions;
 using FeedInsight.API.Services;
 using FeedInsight.Application;
 using FeedInsight.Application.Common.Interfaces;
+using FeedInsight.Application.Common.Options;
 using FeedInsight.Infrastructure;
 using Qdrant.Client;
 
@@ -14,6 +15,8 @@ public static class DependencyInjection
         services.AddControllers();
 
         services.AddHttpContextAccessor();
+
+        services.Configure<JiraSettings>(configuration.GetSection(JiraSettings.SectionName));
 
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<ICurrentApiKeyService, CurrentApiKeyService>();

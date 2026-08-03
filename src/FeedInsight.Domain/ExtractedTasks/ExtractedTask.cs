@@ -1,5 +1,6 @@
-﻿using FeedInsight.Domain.Common.Models;
+using FeedInsight.Domain.Common.Models;
 using FeedInsight.Domain.ExtractedTasks.Enums;
+using FeedInsight.Domain.ExtractedTasks.Events;
 
 namespace FeedInsight.Domain.ExtractedTasks;
 
@@ -45,6 +46,8 @@ public class ExtractedTask : Entity
 
         // Always starts as unassigned until semantic matching or triage occurs
         SyncStatus = ExtractedTaskSyncStatus.Unassigned;
+        
+        AddDomainEvent(new ExtractedTaskCreatedEvent(TenantId, Id));
     }
 
 
