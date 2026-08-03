@@ -61,7 +61,6 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                     b.ToTable("Categories");
                 });
 
-            modelBuilder.Entity("FeedInsight.Domain.Common.Models.OutboxMessage", b =>
             modelBuilder.Entity("FeedInsight.Domain.Chats.ChatMessage", b =>
                 {
                     b.Property<Guid>("Id")
@@ -74,22 +73,6 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Error")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("OccurredOnUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("ProcessedOnUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("OutboxMessages");
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -152,6 +135,33 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("ChatSessions");
+                });
+
+            modelBuilder.Entity("FeedInsight.Domain.Common.Models.OutboxMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Error")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("OccurredOnUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ProcessedOnUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("OutboxMessages");
                 });
 
             modelBuilder.Entity("FeedInsight.Domain.CustomerFeedbacks.CustomerFeedback", b =>
@@ -590,6 +600,15 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("FeedInsight.Domain.Categories.Category", b =>
+                {
+                    b.HasOne("FeedInsight.Domain.Tenants.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("FeedInsight.Domain.Chats.ChatMessage", b =>
                 {
                     b.HasOne("FeedInsight.Domain.Chats.ChatSession", "ChatSession")
@@ -626,15 +645,6 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                     b.Navigation("Tenant");
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("FeedInsight.Domain.Categories.Category", b =>
-                {
-                    b.HasOne("FeedInsight.Domain.Tenants.Tenant", null)
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("FeedInsight.Domain.CustomerFeedbacks.CustomerFeedback", b =>
