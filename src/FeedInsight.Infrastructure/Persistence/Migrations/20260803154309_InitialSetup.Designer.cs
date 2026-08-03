@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FeedInsight.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(FeedInsightDbContext))]
-    [Migration("20260803152603_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20260803154309_InitialSetup")]
+    partial class InitialSetup
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
