@@ -40,6 +40,14 @@ public interface IVectorDatabaseService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Retrieves specific points by their IDs.
+    /// </summary>
+    Task<IReadOnlyList<VectorPoint<TPayload>>> RetrievePointsAsync<TPayload>(
+        string collectionName,
+        IReadOnlyList<Guid> pointIds,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Performs a semantic search in the specified collection.
     /// </summary>
     Task<IReadOnlyList<VectorSearchResult<TPayload>>> SearchAsync<TPayload>(

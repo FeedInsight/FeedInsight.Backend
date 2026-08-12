@@ -78,6 +78,40 @@ public class QdrantVectorDatabaseService : IVectorDatabaseService
         await _client.DeleteAsync(collectionName, ids, cancellationToken: cancellationToken);
     }
 
+    public async Task<IReadOnlyList<VectorPoint<TPayload>>> RetrievePointsAsync<TPayload>(
+        string collectionName,
+        IReadOnlyList<Guid> pointIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (pointIds == null || !pointIds.Any())
+            return Array.Empty<VectorPoint<TPayload>>();
+
+        var ids = pointIds.Select(id => (PointId)id).ToList();
+
+        var points = await _client.RetrieveAsync(
+            collectionName: collectionName,
+            ids: ids,
+            withVectors: true,
+            withPayload: true,
+            cancellationToken: cancellationToken);
+
+        var result = new List<VectorPoint<TPayload>>();
+        foreach (var p in points)
+        {
+            var id = Guid.Parse(p.Id.Uuid);
+            var mappedPayload = MapToPayload<TPayload>(p.Payload);
+
+            if (p.Vectors != null && p.Vectors.VectorsOptionsCase == VectorsOutput.VectorsOptionsOneofCase.Vector)
+            {
+                var floatVector = p.Vectors.Vector.Dense != null ? p.Vectors.Vector.Dense.Data : p.Vectors.Vector.Data;
+                var memory = new ReadOnlyMemory<float>(floatVector.ToArray());
+                result.Add(new VectorPoint<TPayload>(id, memory, mappedPayload!));
+            }
+        }
+
+        return result;
+    }
+
     public async Task<IReadOnlyList<VectorSearchResult<TPayload>>> SearchAsync<TPayload>(
         string collectionName,
         ReadOnlyMemory<float> queryEmbedding,

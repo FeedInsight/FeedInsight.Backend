@@ -17,6 +17,7 @@ public static class DependencyInjection
         services.AddProductAssistant();
         services.AddEmbeddings(configuration);
         services.AddVectorDatabase();
+        services.AddClustering();
 
         services.AddExternalServices();
 
