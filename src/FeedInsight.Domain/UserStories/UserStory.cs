@@ -57,6 +57,13 @@ public class UserStory : Entity
         AddDomainEvent(new UserStoryUpdatedEvent(TenantId, Id));
     }
 
+    public void UpdateCategory(Guid categoryId)
+    {
+        CategoryId = categoryId;
+        // No domain event is added here to avoid recursive event handling. 
+        // This is primarily updated by AI handlers.
+    }
+
     public void IncreaseUrgency(int amount = 1)
     {
         UrgencyScore += amount;
