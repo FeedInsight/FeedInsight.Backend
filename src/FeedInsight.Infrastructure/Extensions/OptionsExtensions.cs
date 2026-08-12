@@ -15,6 +15,7 @@ public static class OptionsExtensions
         services.Configure<QdrantSettings>(configuration.GetSection(QdrantSettings.SectionName));
         services.Configure<HuggingFaceSettings>(configuration.GetSection(HuggingFaceSettings.SectionName));
         services.Configure<DbScanSettings>(configuration.GetSection(DbScanSettings.SectionName));
+        services.Configure<TriageAgentSettings>(configuration.GetSection(TriageAgentSettings.SectionName));
         return services;
     }
 }
