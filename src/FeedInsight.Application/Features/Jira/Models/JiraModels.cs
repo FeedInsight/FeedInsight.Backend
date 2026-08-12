@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using System.Text.Json;
 
 namespace FeedInsight.Application.Features.Jira.Models;
 
@@ -33,6 +34,9 @@ public class JiraIssueFieldsDto
 {
     [JsonPropertyName("summary")]
     public string Summary { get; set; } = string.Empty;
+
+    [JsonPropertyName("description")]
+    public JsonElement? Description { get; set; }
 
     [JsonPropertyName("status")]
     public JiraStatusDto Status { get; set; } = new();
