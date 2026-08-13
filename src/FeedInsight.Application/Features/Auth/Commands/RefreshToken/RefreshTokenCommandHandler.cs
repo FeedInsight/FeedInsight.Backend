@@ -83,6 +83,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, E
             user.Id,
             user.FirstName,
             user.LastName,
+            user.Tenant?.CompanyType.ToString(),
             newAccessToken,
             newRefreshTokenString,
             user.UserRoles.Select(ur => ur.Role.Name).ToList(),
