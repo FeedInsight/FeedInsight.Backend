@@ -64,6 +64,23 @@ public class UserStory : Entity
         // This is primarily updated by AI handlers.
     }
 
+    public void MarkAsSyncedToJira(string jiraTicketKey)
+    {
+        JiraTicketKey = jiraTicketKey;
+        Status = UserStoryStatus.Synced;
+        AddDomainEvent(new UserStoryUpdatedEvent(TenantId, Id));
+    }
+
+    public void UpdateDetails(string title, string? acceptanceCriteria)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+            throw new ArgumentException("Title cannot be empty.");
+
+        Title = title;
+        AcceptanceCriteria = acceptanceCriteria;
+        AddDomainEvent(new UserStoryUpdatedEvent(TenantId, Id));
+    }
+
     public void IncreaseUrgency(int amount = 1)
     {
         UrgencyScore += amount;

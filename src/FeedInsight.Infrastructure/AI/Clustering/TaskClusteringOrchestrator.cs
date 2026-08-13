@@ -20,6 +20,7 @@ public class TaskClusteringOrchestrator : ITaskClusteringOrchestrator
     private readonly IVectorDatabaseService _vectorDb;
     private readonly IRepository<UserStory> _userStoryRepo;
     private readonly IRepository<ExtractedTask> _extractedTaskRepo;
+    private readonly IJiraSyncService _jiraSyncService;
     private readonly TriageAgentSettings _triageSettings;
     private readonly ILogger<TaskClusteringOrchestrator> _logger;
 
@@ -30,6 +31,7 @@ public class TaskClusteringOrchestrator : ITaskClusteringOrchestrator
         IVectorDatabaseService vectorDb,
         IRepository<UserStory> userStoryRepo,
         IRepository<ExtractedTask> extractedTaskRepo,
+        IJiraSyncService jiraSyncService,
         IOptions<TriageAgentSettings> triageSettings,
         ILogger<TaskClusteringOrchestrator> logger)
     {
@@ -39,6 +41,7 @@ public class TaskClusteringOrchestrator : ITaskClusteringOrchestrator
         _vectorDb = vectorDb;
         _userStoryRepo = userStoryRepo;
         _extractedTaskRepo = extractedTaskRepo;
+        _jiraSyncService = jiraSyncService;
         _triageSettings = triageSettings.Value;
         _logger = logger;
     }
@@ -114,6 +117,12 @@ public class TaskClusteringOrchestrator : ITaskClusteringOrchestrator
                     {
                         task.AssignToStory(existingStory.Id);
                         await _extractedTaskRepo.UpdateAsync(task, cancellationToken);
+                    }
+
+                    if (existingStory.Status == UserStoryStatus.Synced)
+                    {
+                        _logger.LogInformation("Story {UserStoryId} is synced. Updating Jira with new urgency.", existingStory.Id);
+                        await _jiraSyncService.PushStoryToJiraAsync(tenantId, existingStory, cancellationToken);
                     }
 
                     result.Results.Add(new ClusterProcessResult 

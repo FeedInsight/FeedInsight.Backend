@@ -13,5 +13,5 @@ public interface IJiraSyncService
 
     Task<JiraIssueDto?> GetIssueByKeyAsync(Guid tenantId, string issueKey, CancellationToken cancellationToken = default);
 
-    Task PushStoryToJiraAsync(Guid tenantId, UserStory story, CancellationToken cancellationToken = default);
+    Task<string?> PushStoryToJiraAsync(Guid tenantId, UserStory story, CancellationToken cancellationToken = default);
 }
