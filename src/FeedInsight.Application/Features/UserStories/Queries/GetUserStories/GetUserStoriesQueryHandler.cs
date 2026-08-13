@@ -57,6 +57,7 @@ public class GetUserStoriesQueryHandler : IRequestHandler<GetUserStoriesQuery, E
             s.Id,
             s.TenantId,
             s.CategoryId,
+            s.Category?.Name,
             s.Source,
             s.JiraTicketKey,
             s.Title,

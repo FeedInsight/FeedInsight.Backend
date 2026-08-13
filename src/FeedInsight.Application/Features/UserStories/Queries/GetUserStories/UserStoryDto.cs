@@ -7,6 +7,7 @@ public record UserStoryDto(
     Guid Id,
     Guid TenantId,
     Guid CategoryId,
+    string? CategoryName,
     UserStorySource Source,
     string? JiraTicketKey,
     string Title,
