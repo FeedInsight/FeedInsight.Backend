@@ -44,7 +44,7 @@ public class RegisterProductOwnerCommandHandler : IRequestHandler<RegisterProduc
             return Errors.Users.DuplicateEmail;
         }
 
-        var tenant = new Tenant(request.CompanyName);
+        var tenant = new Tenant(request.CompanyName, request.CompanyType);
         await _tenantRepository.AddAsync(tenant, cancellationToken);
 
         var defaultCategory = new Category(

@@ -9,6 +9,7 @@ public sealed class UserByIdSpec : SingleResultSpecification<User>
     {
         Query.Where(u => u.Id == userId)
              .Include(u => u.UserRoles)
-             .ThenInclude(ur => ur.Role);
+             .ThenInclude(ur => ur.Role)
+             .Include(u => u.Tenant);
     }
 }

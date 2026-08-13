@@ -1,6 +1,7 @@
 ﻿using FeedInsight.Domain.Common.Interfaces.Security;
 using FeedInsight.Domain.Common.Models;
 using FeedInsight.Domain.Tenants.Enums;
+using System.Data;
 
 namespace FeedInsight.Domain.Tenants;
 
@@ -10,6 +11,7 @@ public class Tenant : Entity
 
     public TenantStatus Status { get; private set; } = TenantStatus.Active;
     public string? StatusReason { get; private set; }
+    public CompanyType CompanyType { get; private set; }
 
     // Jira Integrations (Encrypted before saving!)
     public string? JiraBaseUrl { get; private set; }
@@ -21,9 +23,10 @@ public class Tenant : Entity
 
     private Tenant() { } // constructor for ef-core
 
-    public Tenant(string companyName)
+    public Tenant(string companyName,CompanyType companyType)
     {
         CompanyName = companyName;
+        CompanyType = companyType;
     }
 
     public void UpdateDetails(string companyName)
@@ -53,7 +56,7 @@ public class Tenant : Entity
 
         Status = TenantStatus.Suspended;
         StatusReason = reason;
-
+        
         // Note: In the Application layer, calling this method should also trigger a Domain Event
         // or a manual call to revoke all Refresh Tokens and API Keys associated with this Tenant!
     }
