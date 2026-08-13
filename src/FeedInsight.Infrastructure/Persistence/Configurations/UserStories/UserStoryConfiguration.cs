@@ -1,4 +1,4 @@
-﻿using FeedInsight.Domain.Categories;
+using FeedInsight.Domain.Categories;
 using FeedInsight.Domain.Tenants;
 using FeedInsight.Domain.UserStories;
 using Microsoft.EntityFrameworkCore;
@@ -19,7 +19,7 @@ public class UserStoryConfiguration : IEntityTypeConfiguration<UserStory>
         builder.Property(us => us.AcceptanceCriteria).HasColumnType("nvarchar(max)");
 
         builder.HasOne<Tenant>().WithMany().HasForeignKey(us => us.TenantId).OnDelete(DeleteBehavior.Cascade);
-        builder.HasOne<Category>().WithMany().HasForeignKey(us => us.CategoryId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(us => us.Category).WithMany().HasForeignKey(us => us.CategoryId).OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(us => us.TenantId);
         builder.HasIndex(us => us.JiraTicketKey);

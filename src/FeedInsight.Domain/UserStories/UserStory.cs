@@ -1,3 +1,4 @@
+using FeedInsight.Domain.Categories;
 using FeedInsight.Domain.Common.Models;
 using FeedInsight.Domain.UserStories.Enums;
 using FeedInsight.Domain.UserStories.Events;
@@ -9,6 +10,7 @@ public class UserStory : Entity
     public Guid TenantId { get; private set; }
 
     public Guid CategoryId { get; private set; }
+    public Category? Category { get; private set; }
 
     public UserStorySource Source { get; private set; }
 

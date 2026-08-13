@@ -16,6 +16,7 @@ public class UserStoriesByFiltersSpec : Specification<UserStory>
         int? pageNumber = null,
         int? pageSize = null)
     {
+        Query.Include(x => x.Category);
         Query.Where(x => x.TenantId == tenantId);
 
         if (source.HasValue)
