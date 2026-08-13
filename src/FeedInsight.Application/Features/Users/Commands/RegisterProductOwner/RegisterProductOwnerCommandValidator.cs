@@ -1,4 +1,5 @@
-﻿using FluentValidation;
+﻿using FeedInsight.Domain.Tenants.Enums;
+using FluentValidation;
 
 namespace FeedInsight.Application.Features.Users.Commands.RegisterProductOwner;
 
@@ -26,5 +27,13 @@ public class RegisterProductOwnerCommandValidator : AbstractValidator<RegisterPr
         RuleFor(x => x.Password)
             .NotEmpty().WithMessage("Password is required.")
             .MinimumLength(8).WithMessage("Password must be at least 8 characters long.");
+
+        RuleFor(x => x.CompanyType)
+        .NotEmpty()
+        .Must(value => Enum.TryParse<CompanyType>(
+        value,
+        true,
+        out _))
+      .WithMessage("CompanyType must be Development or Production.");
     }
 }

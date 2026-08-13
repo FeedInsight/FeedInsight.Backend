@@ -10,5 +10,5 @@ public record RegisterProductOwnerCommand(
     string LastName,
     string Email,
     string Password,
-    CompanyType CompanyType
+    string CompanyType
 ) : IRequest<ErrorOr<Guid>>;
