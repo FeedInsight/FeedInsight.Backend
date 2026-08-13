@@ -1,5 +1,8 @@
-﻿namespace FeedInsight.Domain.UserStories.Enums;
+using System.Text.Json.Serialization;
 
+namespace FeedInsight.Domain.UserStories.Enums;
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum UserStorySource
 {
     /// <summary>
