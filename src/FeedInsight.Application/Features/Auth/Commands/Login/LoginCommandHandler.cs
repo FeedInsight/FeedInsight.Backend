@@ -84,6 +84,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, ErrorOr<Authent
             user.Id,
             user.FirstName,
             user.LastName,
+            user.Tenant?.CompanyType.ToString(),
             accessToken,
             refreshTokenString,
             user.UserRoles.Select(ur => ur.Role.Name).ToList(),
