@@ -4,6 +4,7 @@ using FeedInsight.Infrastructure.Persistence.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FeedInsight.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(FeedInsightDbContext))]
-    partial class FeedInsightDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260813143605_AddCompanyTypeToTenant")]
+    partial class AddCompanyTypeToTenant
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -196,9 +199,6 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
-                    b.Property<Guid?>("SubmitterUserId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uniqueidentifier");
 
@@ -208,8 +208,6 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("IsProcessedByRouter");
-
-                    b.HasIndex("SubmitterUserId");
 
                     b.HasIndex("TenantId");
 
@@ -512,13 +510,6 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsDeleted = false,
                             Name = "ProductOwner"
-                        },
-                        new
-                        {
-                            Id = new Guid("33333333-3333-3333-3333-333333333333"),
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsDeleted = false,
-                            Name = "CompanyCustomer"
                         });
                 });
 
@@ -666,18 +657,11 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("FeedInsight.Domain.CustomerFeedbacks.CustomerFeedback", b =>
                 {
-                    b.HasOne("FeedInsight.Domain.Users.User", "SubmitterUser")
-                        .WithMany()
-                        .HasForeignKey("SubmitterUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("FeedInsight.Domain.Tenants.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("SubmitterUser");
                 });
 
             modelBuilder.Entity("FeedInsight.Domain.ExtractedTasks.ExtractedTask", b =>
