@@ -35,8 +35,15 @@ public class CustomerFeedbackConfiguration : IEntityTypeConfiguration<CustomerFe
             .HasForeignKey(cf => cf.TenantId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.HasOne(cf => cf.SubmitterUser)
+            .WithMany()
+            .HasForeignKey(cf => cf.SubmitterUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         // --- INDEXES ---
         builder.HasIndex(cf => cf.TenantId);
+
+        builder.HasIndex(cf => cf.SubmitterUserId);
 
         // 2. Queue Index: Semantic Kernel Background Service will constantly poll the database 
         // with the query: SELECT * FROM CustomerFeedbacks WHERE IsProcessedByRouter = 0.

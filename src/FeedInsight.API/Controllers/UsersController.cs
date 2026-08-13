@@ -1,4 +1,6 @@
-﻿using FeedInsight.Application.Features.Users.Commands.LockUser;
+﻿using FeedInsight.Application.Features.Customers.Commands.CreateCompanyCustomer;
+using FeedInsight.Application.Features.Customers.Queries.GetCompanyCustomers;
+using FeedInsight.Application.Features.Users.Commands.LockUser;
 using FeedInsight.Application.Features.Users.Commands.UnlockUser;
 using FeedInsight.Application.Features.Users.Queries.GetProductOwners;
 using FeedInsight.Application.Messaging;
@@ -63,4 +65,6 @@ public class UsersController : ApiController
             errors => Problem(errors)
         );
     }
+
+  
 }

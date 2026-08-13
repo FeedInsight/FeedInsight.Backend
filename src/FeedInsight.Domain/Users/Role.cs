@@ -8,6 +8,7 @@ public class Role : Entity
 
     public const string SuperAdmin = "SuperAdmin";
     public const string ProductOwner = "ProductOwner";
+    public const string CompanyCustomer = "CompanyCustomer";
 
 
     private Role() { } // private constructor for ef-core

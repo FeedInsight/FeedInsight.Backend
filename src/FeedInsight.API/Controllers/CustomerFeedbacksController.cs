@@ -1,3 +1,4 @@
+using FeedInsight.Application.Features.CustomerFeedbacks.Commands.SubmitCompanyCustomerFeedback;
 using FeedInsight.Application.Features.CustomerFeedbacks.Queries.GetCustomerFeedbacks;
 using FeedInsight.Application.Messaging;
 using FeedInsight.Domain.Users;
@@ -30,6 +31,24 @@ public class CustomerFeedbacksController : ApiController
                 pageSize: query.PageSize,
                 totalItems: paginatedResult.TotalCount
             ),
+            errors => Problem(errors)
+        );
+    }
+
+    [HttpPost]
+    [Route("api/customer-feedback")]
+    [Authorize(Roles = Role.CompanyCustomer)]
+    public async Task<IActionResult> Submit(
+        [FromBody] SubmitCompanyCustomerFeedbackCommand command)
+    {
+        var result = await _mediator.SendAsync(command);
+
+        return result.Match(
+            id => OkResponse(new
+            {
+                FeedbackId = id,
+                Message = "Feedback submitted successfully."
+            }),
             errors => Problem(errors)
         );
     }
