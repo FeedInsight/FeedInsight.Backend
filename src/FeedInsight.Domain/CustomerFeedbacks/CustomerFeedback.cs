@@ -21,6 +21,8 @@ public class CustomerFeedback : Entity
 
     public bool IsProcessedByRouter { get; private set; }
 
+    public ICollection<FeedbackComment> Comments { get; private set; }= new List<FeedbackComment>();
+
     private CustomerFeedback() { }
 
     public CustomerFeedback(

@@ -1,6 +1,5 @@
 ﻿using ErrorOr;
 using FeedInsight.Application.Common.Interfaces;
-using FeedInsight.Application.Features.CustomerFeedbacks.Commands.SubmitCompanyCustomerFeedback;
 using FeedInsight.Application.Features.Users.Specifications;
 using FeedInsight.Application.Messaging;
 using FeedInsight.Domain.Common.Errors;
@@ -8,7 +7,7 @@ using FeedInsight.Domain.Common.Interfaces;
 using FeedInsight.Domain.CustomerFeedbacks;
 using FeedInsight.Domain.Users;
 
-namespace FeedInsight.Application.Features.Feedback.Commands.SubmitCompanyCustomerFeedback;
+namespace FeedInsight.Application.Features.CustomerFeedbacks.Development.Commands.SubmitCompanyCustomerFeedback;
 
 public class SubmitCompanyCustomerFeedbackCommandHandler
     : IRequestHandler<SubmitCompanyCustomerFeedbackCommand, ErrorOr<Guid>>
