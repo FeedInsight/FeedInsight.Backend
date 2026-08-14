@@ -17,6 +17,7 @@ public record CustomerFeedbackDto(
 public record ExtractedTaskDto(
     Guid Id,
     Guid CategoryId,
+    string? CategoryName,
     Guid? UserStoryId,
     string ExtractedIntent,
     string? TechnicalKeywords,
