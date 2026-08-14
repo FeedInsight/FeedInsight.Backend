@@ -30,6 +30,7 @@ namespace FeedInsight.Infrastructure.Persistence.Context
         public DbSet<ChatSession> ChatSessions => Set<ChatSession>();
 
         public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
+        public DbSet<FeedbackComment> FeedbackComments => Set<FeedbackComment>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
