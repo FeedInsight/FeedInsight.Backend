@@ -1,3 +1,5 @@
+using FeedInsight.Application.Features.AI.ProductAssistant;
+using FeedInsight.Infrastructure.AI.ProductAssistant;
 using FeedInsight.Infrastructure.Extensions;
 using FeedInsight.Infrastructure.Extensions.AI;
 using Microsoft.Extensions.Configuration;
@@ -20,6 +22,7 @@ public static class DependencyInjection
         services.AddClustering();
 
         services.AddExternalServices();
+      
 
         return services;
     }
