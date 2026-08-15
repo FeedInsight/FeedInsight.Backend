@@ -9,6 +9,7 @@ public static class ProductAssistantExtensions
     public static IServiceCollection AddProductAssistant(this IServiceCollection services)
     {
         services.AddScoped<IProductAssistantService, ProductAssistantService>();
+        services.AddScoped<IProductAssistantContextService, ProductAssistantContextService>();
         return services;
     }
 }
