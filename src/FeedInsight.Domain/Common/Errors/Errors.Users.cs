@@ -29,5 +29,9 @@ public static partial class Errors
         public static Error CannotLockSuperAdmin => Error.Forbidden(
             code: "Users.CannotLockSuperAdmin",
             description: "You cannot lock a Super Admin account.");
+
+        public static Error NotCustomer => Error.Validation(
+        code: "Users.NotCustomer",
+        description: "The selected user is not a customer.");
     }
 }
