@@ -20,19 +20,22 @@ public class SendChatMessageCommandHandler
     private readonly ITenantResolver _tenantResolver;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IProductAssistantService _productAssistantService;
+    private readonly IProductAssistantContextService _contextService;
 
     public SendChatMessageCommandHandler(
         IRepository<ChatSession> sessionRepository,
         ICurrentUserService currentUserService,
         ITenantResolver tenantResolver,
         IUnitOfWork unitOfWork,
-        IProductAssistantService productAssistantService)
+        IProductAssistantService productAssistantService,
+        IProductAssistantContextService contextService)
     {
         _sessionRepository = sessionRepository;
         _currentUserService = currentUserService;
         _tenantResolver = tenantResolver;
         _unitOfWork = unitOfWork;
         _productAssistantService = productAssistantService;
+        _contextService = contextService;
     }
 
     public async Task<ErrorOr<SendMessageResponseDto>> HandleAsync(
@@ -74,7 +77,7 @@ public class SendChatMessageCommandHandler
 
         var userMessage = session.Messages.Last();
 
-        // Last conversation history
+        // Conversation history
         var history = session.Messages
             .OrderByDescending(x => x.CreatedAt)
             .Take(20)
@@ -84,9 +87,14 @@ public class SendChatMessageCommandHandler
                 x.Content))
             .ToList();
 
-        // TODO: Replace with Qdrant context
-        var databaseContext = string.Empty;
+        // Build relevant company context
+        var databaseContext =
+            await _contextService.GetRelevantContextAsync(
+                tenantId.Value,
+                request.Content,
+                cancellationToken);
 
+        // Generate AI answer
         var assistantContent =
             await _productAssistantService.GenerateAnswerAsync(
                 request.Content,
