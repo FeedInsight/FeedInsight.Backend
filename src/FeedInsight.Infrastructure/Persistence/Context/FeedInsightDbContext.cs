@@ -2,6 +2,7 @@
 using FeedInsight.Domain.Chats;
 using FeedInsight.Domain.Common.Models;
 using FeedInsight.Domain.CustomerFeedbacks;
+using FeedInsight.Domain.DailyAnalyticsSnapshot;
 using FeedInsight.Domain.ExtractedTasks;
 using FeedInsight.Domain.Tenants;
 using FeedInsight.Domain.Users;
@@ -31,6 +32,8 @@ namespace FeedInsight.Infrastructure.Persistence.Context
 
         public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
         public DbSet<FeedbackComment> FeedbackComments => Set<FeedbackComment>();
+
+        public DbSet<DailyAnalyticsSnapshot> DailyAnalyticsSnapshots => Set<DailyAnalyticsSnapshot>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
