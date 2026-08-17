@@ -37,7 +37,7 @@ public class User : Entity
         PasswordHash = hasher.Hash(plainTextPassword);
     }
 
-    public void LockAccount(string reason)
+    public void LockAccount(string? reason)
     {
         if (string.IsNullOrWhiteSpace(reason))
             throw new ArgumentException("A reason must be provided when locking an account.");
