@@ -2,15 +2,9 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace FeedInsight.Application.Common.Interfaces
+namespace FeedInsight.Application.Features.Analytics.DTOs
 {
-    public interface IAnalyticsSnapshotService
-    {
-        Task<DailyAnalyticsSnapshotDto> GenerateSnapshotAsync(
-        Guid tenantId,
-        DateOnly snapshotDate,
-        CancellationToken cancellationToken = default);
-        public record DailyAnalyticsSnapshotDto(
+    public record AnalyticsSnapshotDto(
     DateOnly SnapshotDate,
     int TotalFeedbacksReceived,
     int PositiveSentimentCount,
@@ -20,5 +14,4 @@ namespace FeedInsight.Application.Common.Interfaces
     int DraftTicketsGenerated,
     decimal PoApprovalRatePercent,
     string TopRequestedFeaturesJson);
-    }
 }
