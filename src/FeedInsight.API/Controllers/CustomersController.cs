@@ -106,9 +106,7 @@ public class CustomersController : ApiController
         Guid id,
         [FromBody] LockCompanyCustomerRequest request)
     {
-        var command = new LockCompanyCustomerCommand(
-            id,
-            request.Reason);
+        var command = new LockCompanyCustomerCommand(id,request?.Reason);
 
         var result = await _mediator.SendAsync(command);
 
