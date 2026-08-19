@@ -1,6 +1,5 @@
 ﻿using Ardalis.Specification;
 using FeedInsight.Application.Common.Interfaces;
-
 using FeedInsight.Domain.Common.Interfaces;
 using FeedInsight.Domain.DailyAnalyticsSnapshot;
 using FeedInsight.Domain.Tenants;
@@ -15,13 +14,16 @@ public class AnalyticsSnapshotJob : BackgroundService
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<AnalyticsSnapshotJob> _logger;
 
-    public AnalyticsSnapshotJob( IServiceProvider serviceProvider,ILogger<AnalyticsSnapshotJob> logger)
+    public AnalyticsSnapshotJob(
+        IServiceProvider serviceProvider,
+        ILogger<AnalyticsSnapshotJob> logger)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
     }
 
-    protected override async Task ExecuteAsync( CancellationToken stoppingToken)
+    protected override async Task ExecuteAsync(
+        CancellationToken stoppingToken)
     {
         _logger.LogInformation(
             "Analytics Snapshot Job started.");
@@ -59,9 +61,10 @@ public class AnalyticsSnapshotJob : BackgroundService
                     await tenantRepository.ListAsync(
                         stoppingToken);
 
+                // TEMPORARY:
+                // Generate today's cumulative snapshot immediately for testing.
                 var snapshotDate =
-                    DateOnly.FromDateTime(
-                        DateTime.UtcNow.AddDays(-1));
+                    DateOnly.FromDateTime(DateTime.UtcNow);
 
                 foreach (var tenant in tenants)
                 {
@@ -82,6 +85,8 @@ public class AnalyticsSnapshotJob : BackgroundService
                         continue;
                     }
 
+                    // The service calculates cumulative analytics
+                    // up to the specified snapshot date.
                     var analytics =
                         await analyticsService.GenerateSnapshotAsync(
                             tenant.Id,
@@ -103,13 +108,18 @@ public class AnalyticsSnapshotJob : BackgroundService
                     await snapshotRepository.AddAsync(
                         snapshot,
                         stoppingToken);
+
+                    _logger.LogInformation(
+                        "Cumulative analytics snapshot created for Tenant {TenantId} on {SnapshotDate}.",
+                        tenant.Id,
+                        snapshotDate);
                 }
 
                 await unitOfWork.SaveChangesAsync(
                     stoppingToken);
 
                 _logger.LogInformation(
-                    "Analytics Snapshot Job completed successfully for {SnapshotDate}.",
+                    "Cumulative Analytics Snapshot Job completed successfully for {SnapshotDate}.",
                     snapshotDate);
             }
             catch (OperationCanceledException)
@@ -131,17 +141,16 @@ public class AnalyticsSnapshotJob : BackgroundService
     }
 
     public sealed class AnalyticsSnapshotByTenantAndDateSpec
-    : SingleResultSpecification<DailyAnalyticsSnapshot>
+        : SingleResultSpecification<DailyAnalyticsSnapshot>
     {
         public AnalyticsSnapshotByTenantAndDateSpec(
             Guid tenantId,
             DateOnly snapshotDate)
         {
-            Query
-                .Where(x =>
-                    x.TenantId == tenantId &&
-                    x.SnapshotDate == snapshotDate &&
-                    !x.IsDeleted);
+            Query.Where(x =>
+                x.TenantId == tenantId &&
+                x.SnapshotDate == snapshotDate &&
+                !x.IsDeleted);
         }
     }
 }

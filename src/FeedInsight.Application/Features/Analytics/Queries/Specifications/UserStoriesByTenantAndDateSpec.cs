@@ -10,15 +10,12 @@ namespace FeedInsight.Application.Features.Analytics.Queries.Specifications
     public class UserStoriesByTenantAndDateSpec : Specification<UserStory>
     {
         public UserStoriesByTenantAndDateSpec(
-            Guid tenantId,
-            DateTime startDate,
-            DateTime endDate)
+         Guid tenantId,
+         DateTime endDate)
         {
-            Query
-                .Where(x =>
-                    x.TenantId == tenantId &&
-                    x.CreatedAt >= startDate &&
-                    x.CreatedAt < endDate);
+            Query.Where(x =>
+                x.TenantId == tenantId &&
+                x.CreatedAt < endDate);
         }
     }
 }
