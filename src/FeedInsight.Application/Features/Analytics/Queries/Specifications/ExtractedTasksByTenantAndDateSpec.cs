@@ -10,15 +10,12 @@ namespace FeedInsight.Application.Features.Analytics.Queries.Specifications
     public class ExtractedTasksByTenantAndDateSpec : Specification<ExtractedTask>
     {
         public ExtractedTasksByTenantAndDateSpec(
-            Guid tenantId,
-            DateTime startDate,
-            DateTime endDate)
+       Guid tenantId,
+       DateTime endDate)
         {
-            Query
-                .Where(x =>
-                    x.TenantId == tenantId &&
-                    x.CreatedAt >= startDate &&
-                    x.CreatedAt < endDate);
+            Query.Where(x =>
+                x.TenantId == tenantId &&
+                x.CreatedAt < endDate);
         }
     }
 }
