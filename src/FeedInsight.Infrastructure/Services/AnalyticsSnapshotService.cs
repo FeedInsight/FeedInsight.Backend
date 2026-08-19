@@ -34,21 +34,18 @@ public class AnalyticsSnapshotService : IAnalyticsSnapshotService
     }
 
     public async Task<DailyAnalyticsSnapshotDto> GenerateSnapshotAsync(
-        Guid tenantId,
-        DateOnly snapshotDate,
-        CancellationToken cancellationToken = default)
+     Guid tenantId,
+     DateOnly snapshotDate,
+     CancellationToken cancellationToken = default)
     {
-        var startDate = snapshotDate.ToDateTime(TimeOnly.MinValue);
-        var endDate = snapshotDate
+        var snapshotEndDate = snapshotDate
             .AddDays(1)
             .ToDateTime(TimeOnly.MinValue);
 
-       
         var feedbacks = await _feedbackRepository.ListAsync(
             new FeedbacksByTenantAndDateSpec(
                 tenantId,
-                startDate,
-                endDate),
+                snapshotEndDate),
             cancellationToken);
 
         var totalFeedbacksReceived = feedbacks.Count;
@@ -71,35 +68,25 @@ public class AnalyticsSnapshotService : IAnalyticsSnapshotService
                 "Negative",
                 StringComparison.OrdinalIgnoreCase));
 
-        
-
         var tasks = await _taskRepository.ListAsync(
             new ExtractedTasksByTenantAndDateSpec(
                 tenantId,
-                startDate,
-                endDate),
+                snapshotEndDate),
             cancellationToken);
 
         var totalTasksExtracted = tasks.Count;
 
-      
-
         var userStories = await _userStoryRepository.ListAsync(
             new UserStoriesByTenantAndDateSpec(
                 tenantId,
-                startDate,
-                endDate),
+                snapshotEndDate),
             cancellationToken);
 
-       
         var feedInsightStories = userStories
             .Where(x => x.Source == UserStorySource.FeedInsight)
             .ToList();
 
-        
         var draftTicketsGenerated = feedInsightStories.Count;
-
-       
 
         var approvedStories = feedInsightStories.Count(x =>
             x.Status == UserStoryStatus.Synced);
@@ -112,8 +99,6 @@ public class AnalyticsSnapshotService : IAnalyticsSnapshotService
                     feedInsightStories.Count *
                     100,
                     2);
-
-        
 
         var categoryIds = tasks
             .Select(x => x.CategoryId)
@@ -149,8 +134,6 @@ public class AnalyticsSnapshotService : IAnalyticsSnapshotService
         var topRequestedFeaturesJson =
             JsonSerializer.Serialize(topRequestedFeatures);
 
-        
-
         return new DailyAnalyticsSnapshotDto(
             SnapshotDate: snapshotDate,
             TotalFeedbacksReceived: totalFeedbacksReceived,
@@ -161,13 +144,10 @@ public class AnalyticsSnapshotService : IAnalyticsSnapshotService
             DraftTicketsGenerated: draftTicketsGenerated,
             PoApprovalRatePercent: poApprovalRatePercent,
             TopRequestedFeaturesJson: topRequestedFeaturesJson);
-
-
     }
 
-    
 
-    
 
-   
+
+
 }
