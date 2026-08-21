@@ -1,5 +1,10 @@
+using FeedInsight.Application.Common.Interfaces;
+using FeedInsight.Application.Features.AI.ProductAssistant;
+using FeedInsight.Infrastructure.AI.ProductAssistant;
+using FeedInsight.Infrastructure.BackgroundJobs;
 using FeedInsight.Infrastructure.Extensions;
 using FeedInsight.Infrastructure.Extensions.AI;
+using FeedInsight.Infrastructure.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -18,8 +23,12 @@ public static class DependencyInjection
         services.AddEmbeddings(configuration);
         services.AddVectorDatabase();
         services.AddClustering();
+        services.AddAnalytics();
 
         services.AddExternalServices();
+
+       
+
 
         return services;
     }
