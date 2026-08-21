@@ -9,6 +9,7 @@ public sealed class UserByEmailSpec : SingleResultSpecification<User>
     {
         Query.Where(u => u.Email == email)
              .Include(u => u.RefreshTokens)
+             .Include(u => u.Tenant)
              .Include(u => u.UserRoles)
              .ThenInclude(ur => ur.Role);
     }

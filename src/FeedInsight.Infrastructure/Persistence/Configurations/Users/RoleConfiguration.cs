@@ -29,7 +29,12 @@ public class RoleConfiguration : IEntityTypeConfiguration<Role>
             { 
                 Id = Guid.Parse("22222222-2222-2222-2222-222222222222"),
                 CreatedAt = seedDate
-            }
+            },
+             new Role(Role.CompanyCustomer)
+             {
+                 Id = Guid.Parse("33333333-3333-3333-3333-333333333333"),
+                 CreatedAt = seedDate
+             }
         );
     }
 }

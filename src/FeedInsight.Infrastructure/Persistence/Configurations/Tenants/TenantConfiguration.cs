@@ -19,6 +19,10 @@ public class TenantConfiguration : IEntityTypeConfiguration<Tenant>
             .HasConversion<string>()
             .HasMaxLength(50)
             .IsRequired();
+        builder.Property(t => t.CompanyType)
+             .HasConversion<string>()
+             .HasMaxLength(50)
+             .IsRequired();
 
         builder.Property(t => t.StatusReason)
             .HasMaxLength(500);
