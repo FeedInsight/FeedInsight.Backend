@@ -27,7 +27,8 @@ public class NightlyClusteringJob : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("Nightly Clustering Job started.");
+        _logger.LogInformation("Nightly Clustering Job started (Disabled for presentation).");
+        return;
 
         using var timer = new PeriodicTimer(TimeSpan.FromHours(24));
 

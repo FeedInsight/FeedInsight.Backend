@@ -16,6 +16,7 @@ public static class OptionsExtensions
         services.Configure<HuggingFaceSettings>(configuration.GetSection(HuggingFaceSettings.SectionName));
         services.Configure<DbScanSettings>(configuration.GetSection(DbScanSettings.SectionName));
         services.Configure<TriageAgentSettings>(configuration.GetSection(TriageAgentSettings.SectionName));
+        services.Configure<OutboxProcessorSettings>(configuration.GetSection(OutboxProcessorSettings.SectionName));
         return services;
     }
 }
