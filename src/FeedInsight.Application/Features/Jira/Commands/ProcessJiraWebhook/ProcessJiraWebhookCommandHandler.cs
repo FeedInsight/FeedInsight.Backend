@@ -60,18 +60,18 @@ public class ProcessJiraWebhookCommandHandler : IRequestHandler<ProcessJiraWebho
             return Errors.Tenants.NotFound;
         }
 
-        string secret = _encryptor.Decrypt(tenant.JiraWebhookSecret);
-
-        if (!_signatureValidator.IsSignatureValid(request.RawPayload, secret, request.SignatureHeader))
-        {
-            _logger.LogWarning("Webhook failed: Invalid HMAC Signature for Tenant {TenantId}.", request.TenantId);
-            return Error.Unauthorized("Jira.InvalidSignature", "The webhook signature is invalid.");
-        }
-
         try
         {
+            string secret = _encryptor.Decrypt(tenant.JiraWebhookSecret);
+
+            if (!_signatureValidator.IsSignatureValid(request.RawPayload, secret, request.SignatureHeader))
+            {
+                _logger.LogWarning("Webhook failed: Invalid HMAC Signature for Tenant {TenantId}.", request.TenantId);
+                return Error.Unauthorized("Jira.InvalidSignature", "The webhook signature is invalid.");
+            }
+
             // DEBUG: Dump the payload to a file BEFORE deserialize
-            System.IO.File.WriteAllText(@"C:\Users\abdon\.gemini\antigravity-ide\brain\df233c4b-1b4c-4608-8d63-94ade1de3171\scratch\jira_payload.json", request.RawPayload);
+            //System.IO.File.WriteAllText(@"C:\Users\abdon\.gemini\antigravity-ide\brain\df233c4b-1b4c-4608-8d63-94ade1de3171\scratch\jira_payload.json", request.RawPayload);
 
             var payload = JsonSerializer.Deserialize<JiraWebhookPayloadDto>(request.RawPayload, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
@@ -171,7 +171,7 @@ public class ProcessJiraWebhookCommandHandler : IRequestHandler<ProcessJiraWebho
                     sb.Append(textProp.GetString());
                 }
             }
-            
+
             if (element.TryGetProperty("content", out var contentProp) && contentProp.ValueKind == JsonValueKind.Array)
             {
                 foreach (var child in contentProp.EnumerateArray())
