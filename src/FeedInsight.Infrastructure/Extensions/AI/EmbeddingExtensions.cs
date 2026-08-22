@@ -20,21 +20,30 @@ public static class EmbeddingExtensions
 #pragma warning disable SKEXP0010 // Type or member is obsolete
         var hfSettings = configuration.GetSection(HuggingFaceSettings.SectionName).Get<HuggingFaceSettings>();
 
-        if (hfSettings != null && hfSettings.EmbeddingApiKeys.Length > 0)
+        if (hfSettings != null)
         {
-            var generators = hfSettings.EmbeddingApiKeys
-                .Select(key =>
-                {
-                    var clientOptions = new OpenAIClientOptions { Endpoint = new Uri(hfSettings.EmbeddingEndpoint) };
-                    var client = new OpenAIClient(new ApiKeyCredential(key), clientOptions);
-                    return (IEmbeddingGenerator<string, Embedding<float>>)
-                        client.GetEmbeddingClient(hfSettings.EmbeddingModelId).AsIEmbeddingGenerator();
-                })
-                .ToList();
+            // Support both old config (single ApiKey) and new config (EmbeddingApiKeys pool).
+            // If EmbeddingApiKeys is provided, use the pool; otherwise fall back to the single ApiKey.
+            var keysToUse = hfSettings.EmbeddingApiKeys.Length > 0
+                ? hfSettings.EmbeddingApiKeys
+                : (!string.IsNullOrWhiteSpace(hfSettings.ApiKey) ? new[] { hfSettings.ApiKey } : []);
 
-            // Singleton so the round-robin index is shared across all requests.
-            services.AddSingleton<IEmbeddingGenerator<string, Embedding<float>>>(sp =>
-                new PooledEmbeddingGenerator(generators, sp.GetRequiredService<ILogger<PooledEmbeddingGenerator>>()));
+            if (keysToUse.Length > 0)
+            {
+                var generators = keysToUse
+                    .Select(key =>
+                    {
+                        var clientOptions = new OpenAIClientOptions { Endpoint = new Uri(hfSettings.EmbeddingEndpoint) };
+                        var client = new OpenAIClient(new ApiKeyCredential(key), clientOptions);
+                        return (IEmbeddingGenerator<string, Embedding<float>>)
+                            client.GetEmbeddingClient(hfSettings.EmbeddingModelId).AsIEmbeddingGenerator();
+                    })
+                    .ToList();
+
+                // Singleton so the round-robin index is shared across all requests.
+                services.AddSingleton<IEmbeddingGenerator<string, Embedding<float>>>(sp =>
+                    new PooledEmbeddingGenerator(generators, sp.GetRequiredService<ILogger<PooledEmbeddingGenerator>>()));
+            }
         }
 #pragma warning restore SKEXP0010 // Type or member is obsolete
 
