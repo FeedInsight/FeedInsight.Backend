@@ -109,7 +109,7 @@ public class ProcessJiraWebhookCommandHandler : IRequestHandler<ProcessJiraWebho
                 var description = ExtractDescription(payload.Issue.Fields.Description) ?? story.AcceptanceCriteria;
                 story.UpdateFromJiraWebhook(title, description, mappedStatus);
             }
-            else if (webhookEvent == "jira:issue_created" && story == null)
+            else if ((webhookEvent == "jira:issue_created" || webhookEvent == "jira:issue_updated") && story == null)
             {
                 // Fetch the fallback category for new Jira stories
                 var categories = await _categoryRepository.ListAsync(new CategoriesByTenantSpec(tenant.Id), cancellationToken);
