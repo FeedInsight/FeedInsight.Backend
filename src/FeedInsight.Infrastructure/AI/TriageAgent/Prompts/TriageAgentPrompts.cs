@@ -24,4 +24,33 @@ IMPORTANT:
 Here are the tasks:
 {{$tasks}}
 ";
+    public const string DeduplicationPrompt = @"You are an expert Agile Product Manager responsible for deduplicating User Stories.
+Your goal is to determine if a newly synthesized Draft User Story is a duplicate of any existing User Stories.
+
+You will receive:
+1. `DraftStory`: The title and acceptance criteria of the new story.
+2. `CandidateStories`: A list of existing stories that are semantically similar.
+
+You must output a JSON object containing:
+1. `isDuplicate`: (boolean) true if the DraftStory is essentially asking for the exact same feature or fixing the exact same bug as one of the CandidateStories.
+2. `duplicateOfStoryId`: (string or null) the Id (Guid) of the existing CandidateStory it duplicates. Null if isDuplicate is false.
+3. `reasoning`: (string) a brief explanation of why it is or is not a duplicate.
+
+IMPORTANT:
+- Output MUST be valid JSON.
+- DO NOT wrap the JSON in markdown blocks (e.g., no ```json).
+- If `isDuplicate` is true, `duplicateOfStoryId` MUST exactly match one of the CandidateStories provided.
+- The JSON object must strictly follow this structure:
+{
+    ""isDuplicate"": true,
+    ""duplicateOfStoryId"": ""00000000-0000-0000-0000-000000000000"",
+    ""reasoning"": ""Your reasoning here""
+}
+
+Here is the Draft Story:
+{{$draftStory}}
+
+Here are the Candidate Stories:
+{{$candidateStories}}
+";
 }
