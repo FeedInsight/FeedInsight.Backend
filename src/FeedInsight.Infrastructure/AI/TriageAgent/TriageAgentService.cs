@@ -111,4 +111,59 @@ public class TriageAgentService : ITriageAgentService
 
         return "{}";
     }
+
+    public async Task<DeduplicationDecisionResponse> DetermineDeduplicationAsync(
+        TriageAgentResponse draftStory,
+        IReadOnlyList<FeedInsight.Application.Common.Models.VectorSearchResult<FeedInsight.Application.Common.Models.UserStoryPayload>> candidateStories,
+        CancellationToken cancellationToken = default)
+    {
+        if (candidateStories == null || !candidateStories.Any())
+        {
+            return new DeduplicationDecisionResponse { IsDuplicate = false };
+        }
+
+        var candidateContext = candidateStories.Select(s => new
+        {
+            StoryId = s.PointId,
+            Title = s.Payload?.Title,
+            AcceptanceCriteria = s.Payload?.AcceptanceCriteria
+        });
+
+        string draftStoryJson = JsonSerializer.Serialize(draftStory, _jsonSerializerOptions);
+        string candidatesJson = JsonSerializer.Serialize(candidateContext, _jsonSerializerOptions);
+
+        string prompt = TriageAgentPrompts.DeduplicationPrompt;
+
+        var executionSettings = new OpenAIPromptExecutionSettings
+        {
+            ResponseFormat = "json_object",
+            Temperature = 0.1 
+        };
+
+        var arguments = new KernelArguments(executionSettings)
+        {
+            { "draftStory", draftStoryJson },
+            { "candidateStories", candidatesJson }
+        };
+
+        try
+        {
+            var result = await _kernel.InvokePromptAsync(prompt, arguments, cancellationToken: cancellationToken);
+            string jsonResponse = result.GetValue<string>() ?? "{}";
+
+            _logger.LogInformation("Triage Agent Deduplication Response: \n{Response}", jsonResponse);
+
+            jsonResponse = CleanJsonOutput(jsonResponse);
+
+            var aiResponse = JsonSerializer.Deserialize<DeduplicationDecisionResponse>(jsonResponse, _jsonSerializerOptions);
+
+            return aiResponse ?? new DeduplicationDecisionResponse { IsDuplicate = false };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to process deduplication decision through Triage Agent LLM.");
+            // Fallback to false so we don't drop data, it will just create a new story
+            return new DeduplicationDecisionResponse { IsDuplicate = false };
+        }
+    }
 }
