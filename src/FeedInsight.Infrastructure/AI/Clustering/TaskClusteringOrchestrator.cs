@@ -97,17 +97,22 @@ public class TaskClusteringOrchestrator : ITaskClusteringOrchestrator
             var searchResults = await _vectorDb.SearchAsync<UserStoryPayload>(
                 "user_stories", 
                 embedding, 
-                limit: 1, 
+                limit: _triageSettings.CandidateRetrievalLimit, 
                 filter: filter, 
                 cancellationToken: cancellationToken);
 
-            var topResult = searchResults.FirstOrDefault();
+            var candidateStories = searchResults
+                .Where(r => r.Score >= _triageSettings.DeduplicationSimilarityThreshold)
+                .ToList();
 
-            if (topResult != null && topResult.Score >= _triageSettings.DeduplicationSimilarityThreshold)
+            var llmDecision = await _triageAgent.DetermineDeduplicationAsync(draftStory, candidateStories, cancellationToken);
+
+            if (llmDecision.IsDuplicate && llmDecision.DuplicateOfStoryId.HasValue)
             {
-                _logger.LogInformation("Duplicate User Story found! Merging cluster into existing story {UserStoryId}", topResult.PointId);
+                var targetId = llmDecision.DuplicateOfStoryId.Value;
+                _logger.LogInformation("LLM Duplicate User Story found! Merging cluster into existing story {UserStoryId}. Reasoning: {Reasoning}", targetId, llmDecision.Reasoning);
                 
-                var existingStory = await _userStoryRepo.GetByIdAsync(topResult.PointId, cancellationToken);
+                var existingStory = await _userStoryRepo.GetByIdAsync(targetId, cancellationToken);
                 if (existingStory != null)
                 {
                     existingStory.IncreaseUrgency(cluster.Count);
@@ -130,14 +135,14 @@ public class TaskClusteringOrchestrator : ITaskClusteringOrchestrator
                         Action = "Merged", 
                         UserStoryId = existingStory.Id, 
                         Title = existingStory.Title,
-                        Score = topResult.Score,
+                        Score = candidateStories.FirstOrDefault(c => c.PointId == targetId)?.Score ?? 0,
                         TasksClustered = cluster.Count
                     });
                 }
             }
             else
             {
-                _logger.LogInformation("No duplicate found. Creating a new Draft User Story.");
+                _logger.LogInformation("No duplicate found by LLM. Creating a new Draft User Story. Reasoning: {Reasoning}", llmDecision.Reasoning);
                 
                 var newStory = new UserStory(
                     tenantId: tenantId,
