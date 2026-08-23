@@ -21,5 +21,8 @@
 # NuGet packages
 packages/
 
-# Test results
 TestResults/
+
+# Application settings
+appsettings.Development.json
+appsettings.Production.json
