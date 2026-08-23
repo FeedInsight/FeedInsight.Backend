@@ -19,6 +19,13 @@ jobs:
       - name: Install dependencies
         run: dotnet restore
 
+      - name: Inject Production Settings
+        shell: bash
+        run: |
+          cat << 'EOF' > src/FeedInsight.API/appsettings.Production.json
+          ${{ secrets.PRODUCTION_APPSETTINGS }}
+          EOF
+
       - name: Build
         run: dotnet build --configuration Release --no-restore
 

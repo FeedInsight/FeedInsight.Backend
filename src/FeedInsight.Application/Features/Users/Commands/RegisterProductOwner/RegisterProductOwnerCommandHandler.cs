@@ -7,6 +7,7 @@ using FeedInsight.Domain.Common.Errors;
 using FeedInsight.Domain.Common.Interfaces;
 using FeedInsight.Domain.Common.Interfaces.Security;
 using FeedInsight.Domain.Tenants;
+using FeedInsight.Domain.Tenants.Enums;
 using FeedInsight.Domain.Users;
 
 namespace FeedInsight.Application.Features.Users.Commands.RegisterProductOwner;
@@ -43,8 +44,17 @@ public class RegisterProductOwnerCommandHandler : IRequestHandler<RegisterProduc
         {
             return Errors.Users.DuplicateEmail;
         }
+        if (!Enum.TryParse<CompanyType>(
+         request.CompanyType,
+         ignoreCase: true,
+         out var companyType))
+        {
+            return Errors.Tenants.NotFound;
+        }
 
-        var tenant = new Tenant(request.CompanyName);
+        var tenant = new Tenant(
+            request.CompanyName,
+            companyType);
         await _tenantRepository.AddAsync(tenant, cancellationToken);
 
         var defaultCategory = new Category(

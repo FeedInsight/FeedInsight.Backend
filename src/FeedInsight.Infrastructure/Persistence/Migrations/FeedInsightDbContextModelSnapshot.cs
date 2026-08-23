@@ -149,11 +149,17 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                     b.Property<string>("Error")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime?>("NextRetryUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime>("OccurredOnUtc")
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("ProcessedOnUtc")
                         .HasColumnType("datetime2");
+
+                    b.Property<int>("RetryCount")
+                        .HasColumnType("int");
 
                     b.Property<string>("Type")
                         .IsRequired()
@@ -196,6 +202,9 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
+                    b.Property<Guid?>("SubmitterUserId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uniqueidentifier");
 
@@ -206,9 +215,105 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("IsProcessedByRouter");
 
+                    b.HasIndex("SubmitterUserId");
+
                     b.HasIndex("TenantId");
 
                     b.ToTable("CustomerFeedbacks");
+                });
+
+            modelBuilder.Entity("FeedInsight.Domain.CustomerFeedbacks.FeedbackComment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("CustomerFeedbackId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomerFeedbackId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("FeedbackComments", (string)null);
+                });
+
+            modelBuilder.Entity("FeedInsight.Domain.DailyAnalyticsSnapshot.DailyAnalyticsSnapshot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DraftTicketsGenerated")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("NegativeSentimentCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("NeutralSentimentCount")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("PoApprovalRatePercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<int>("PositiveSentimentCount")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly>("SnapshotDate")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("TopRequestedFeaturesJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("TotalFeedbacksReceived")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TotalTasksExtracted")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "SnapshotDate")
+                        .IsUnique();
+
+                    b.ToTable("DailyAnalyticsSnapshots");
                 });
 
             modelBuilder.Entity("FeedInsight.Domain.ExtractedTasks.ExtractedTask", b =>
@@ -329,6 +434,11 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("CompanyType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -502,6 +612,13 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsDeleted = false,
                             Name = "ProductOwner"
+                        },
+                        new
+                        {
+                            Id = new Guid("33333333-3333-3333-3333-333333333333"),
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "CompanyCustomer"
                         });
                 });
 
@@ -649,6 +766,41 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("FeedInsight.Domain.CustomerFeedbacks.CustomerFeedback", b =>
                 {
+                    b.HasOne("FeedInsight.Domain.Users.User", "SubmitterUser")
+                        .WithMany()
+                        .HasForeignKey("SubmitterUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("FeedInsight.Domain.Tenants.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SubmitterUser");
+                });
+
+            modelBuilder.Entity("FeedInsight.Domain.CustomerFeedbacks.FeedbackComment", b =>
+                {
+                    b.HasOne("FeedInsight.Domain.CustomerFeedbacks.CustomerFeedback", "CustomerFeedback")
+                        .WithMany("Comments")
+                        .HasForeignKey("CustomerFeedbackId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("FeedInsight.Domain.Users.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CustomerFeedback");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("FeedInsight.Domain.DailyAnalyticsSnapshot.DailyAnalyticsSnapshot", b =>
+                {
                     b.HasOne("FeedInsight.Domain.Tenants.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
@@ -693,7 +845,7 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("FeedInsight.Domain.UserStories.UserStory", b =>
                 {
-                    b.HasOne("FeedInsight.Domain.Categories.Category", null)
+                    b.HasOne("FeedInsight.Domain.Categories.Category", "Category")
                         .WithMany()
                         .HasForeignKey("CategoryId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -704,6 +856,8 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Category");
                 });
 
             modelBuilder.Entity("FeedInsight.Domain.Users.RefreshToken", b =>
@@ -747,6 +901,11 @@ namespace FeedInsight.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("FeedInsight.Domain.Chats.ChatSession", b =>
                 {
                     b.Navigation("Messages");
+                });
+
+            modelBuilder.Entity("FeedInsight.Domain.CustomerFeedbacks.CustomerFeedback", b =>
+                {
+                    b.Navigation("Comments");
                 });
 
             modelBuilder.Entity("FeedInsight.Domain.Tenants.Tenant", b =>

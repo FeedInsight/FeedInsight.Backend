@@ -187,17 +187,40 @@ public class JiraSyncService : IJiraSyncService
         return JsonSerializer.Deserialize<JiraIssueDto>(jsonString, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
     }
 
-    public async Task PushStoryToJiraAsync(Guid tenantId, UserStory story, CancellationToken cancellationToken = default)
+    private string GetJiraPriorityId(int urgencyScore)
+    {
+        if (_jiraSettings.PriorityMappings == null || !_jiraSettings.PriorityMappings.Any())
+        {
+            // Default fallback if no mappings are configured
+            // Highest=1, High=2, Medium=3, Low=4, Lowest=5
+            if (urgencyScore >= 8) return "1"; // Highest
+            if (urgencyScore >= 6) return "2"; // High
+            if (urgencyScore >= 4) return "3"; // Medium
+            if (urgencyScore >= 2) return "4"; // Low
+            return "5"; // Lowest
+        }
+
+        var mapping = _jiraSettings.PriorityMappings
+            .OrderByDescending(m => m.MinUrgencyScore)
+            .FirstOrDefault(m => urgencyScore >= m.MinUrgencyScore);
+
+        if (mapping != null)
+        {
+            return mapping.PriorityId;
+        }
+
+        return _jiraSettings.PriorityMappings.OrderBy(m => m.MinUrgencyScore).First().PriorityId;
+    }
+
+    public async Task<string?> PushStoryToJiraAsync(Guid tenantId, UserStory story, CancellationToken cancellationToken = default)
     {
         var client = await CreateJiraClientAsync(tenantId, cancellationToken);
-        if (client == null) return;
+        if (client == null) return null;
         
-        var payload = new
+        var fields = new System.Collections.Generic.Dictionary<string, object>
         {
-            fields = new
-            {
-                summary = story.Title,
-                description = new 
+            { "summary", story.Title },
+            { "description", new 
                 {
                     type = "doc",
                     version = 1,
@@ -212,38 +235,35 @@ public class JiraSyncService : IJiraSyncService
                         }
                     }
                 }
-            }
+            },
+            { "priority", new { id = GetJiraPriorityId(story.UrgencyScore) } },
+            { "labels", new[] { $"Urgency:{story.UrgencyScore}" } }
         };
 
         if (!string.IsNullOrEmpty(story.JiraTicketKey))
         {
-            var content = new StringContent(JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
+            var updatePayload = new { fields = fields };
+            var content = new StringContent(JsonSerializer.Serialize(updatePayload), System.Text.Encoding.UTF8, "application/json");
             var response = await client.PutAsync($"/rest/api/3/issue/{story.JiraTicketKey}", content, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
                 var error = await response.Content.ReadAsStringAsync(cancellationToken);
                 _logger.LogError("Failed to update Jira issue {IssueKey}: {Error}", story.JiraTicketKey, error);
             }
+            return story.JiraTicketKey;
         }
         else
         {
             if (string.IsNullOrWhiteSpace(_jiraSettings.DefaultProjectKey))
             {
                 _logger.LogWarning("Cannot create Jira issue because DefaultProjectKey is missing in JiraSettings.");
-                return;
+                return null;
             }
 
-            var createPayload = new
-            {
-                fields = new
-                {
-                    project = new { key = _jiraSettings.DefaultProjectKey },
-                    summary = story.Title,
-                    description = payload.fields.description,
-                    issuetype = new { name = _jiraSettings.AllowedIssueTypes.FirstOrDefault() ?? "Story" }
-                }
-            };
+            fields["project"] = new { key = _jiraSettings.DefaultProjectKey };
+            fields["issuetype"] = new { name = _jiraSettings.AllowedIssueTypes.FirstOrDefault() ?? "Story" };
 
+            var createPayload = new { fields = fields };
             var content = new StringContent(JsonSerializer.Serialize(createPayload), System.Text.Encoding.UTF8, "application/json");
             var response = await client.PostAsync("/rest/api/3/issue", content, cancellationToken);
             
@@ -251,6 +271,7 @@ public class JiraSyncService : IJiraSyncService
             {
                 var error = await response.Content.ReadAsStringAsync(cancellationToken);
                 _logger.LogError("Failed to create Jira issue: {Error}", error);
+                return null;
             }
             else
             {
@@ -258,8 +279,11 @@ public class JiraSyncService : IJiraSyncService
                 using var document = JsonDocument.Parse(jsonString);
                 if (document.RootElement.TryGetProperty("key", out var keyElement))
                 {
-                    _logger.LogInformation("Successfully created Jira issue {IssueKey}", keyElement.GetString());
+                    var key = keyElement.GetString();
+                    _logger.LogInformation("Successfully created Jira issue {IssueKey}", key);
+                    return key;
                 }
+                return null;
             }
         }
     }

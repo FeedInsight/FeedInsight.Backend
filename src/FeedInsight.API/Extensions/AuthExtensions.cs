@@ -38,7 +38,13 @@ public static class AuthExtensions
         });
 
         // Optional but recommended: Add Authorization policies
-        services.AddAuthorization();
+        services.AddAuthorization(options =>
+        {
+            options.AddPolicy("DevelopmentAppOnly", policy =>
+            {
+                policy.RequireClaim("companyType", "Development");
+            });
+        });
 
         return services;
     }

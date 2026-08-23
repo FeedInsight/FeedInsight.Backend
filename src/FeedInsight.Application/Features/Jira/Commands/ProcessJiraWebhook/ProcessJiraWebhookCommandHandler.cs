@@ -1,6 +1,11 @@
+using System.Text;
+using System.Text.Json;
 using ErrorOr;
 using FeedInsight.Application.Common.Interfaces;
+using FeedInsight.Application.Common.Interfaces.Security;
+using FeedInsight.Application.Common.Options;
 using FeedInsight.Application.Features.Categories.Specifications;
+using FeedInsight.Application.Features.Jira.Models;
 using FeedInsight.Application.Features.Jira.Specifications;
 using FeedInsight.Application.Messaging;
 using FeedInsight.Domain.Categories;
@@ -11,11 +16,6 @@ using FeedInsight.Domain.Tenants;
 using FeedInsight.Domain.UserStories;
 using FeedInsight.Domain.UserStories.Enums;
 using Microsoft.Extensions.Logging;
-using System.Text;
-using System.Text.Json;
-using FeedInsight.Application.Common.Interfaces.Security;
-using FeedInsight.Application.Common.Options;
-using FeedInsight.Application.Features.Jira.Models;
 using Microsoft.Extensions.Options;
 
 namespace FeedInsight.Application.Features.Jira.Commands.ProcessJiraWebhook;
@@ -60,17 +60,21 @@ public class ProcessJiraWebhookCommandHandler : IRequestHandler<ProcessJiraWebho
             return Errors.Tenants.NotFound;
         }
 
-        string secret = _encryptor.Decrypt(tenant.JiraWebhookSecret);
-
-        if (!_signatureValidator.IsSignatureValid(request.RawPayload, secret, request.SignatureHeader))
-        {
-            _logger.LogWarning("Webhook failed: Invalid HMAC Signature for Tenant {TenantId}.", request.TenantId);
-            return Error.Unauthorized("Jira.InvalidSignature", "The webhook signature is invalid.");
-        }
-
         try
         {
+            string secret = _encryptor.Decrypt(tenant.JiraWebhookSecret);
+
+            if (!_signatureValidator.IsSignatureValid(request.RawPayload, secret, request.SignatureHeader))
+            {
+                _logger.LogWarning("Webhook failed: Invalid HMAC Signature for Tenant {TenantId}.", request.TenantId);
+                return Error.Unauthorized("Jira.InvalidSignature", "The webhook signature is invalid.");
+            }
+
+            // DEBUG: Dump the payload to a file BEFORE deserialize
+            //System.IO.File.WriteAllText(@"C:\Users\abdon\.gemini\antigravity-ide\brain\df233c4b-1b4c-4608-8d63-94ade1de3171\scratch\jira_payload.json", request.RawPayload);
+
             var payload = JsonSerializer.Deserialize<JiraWebhookPayloadDto>(request.RawPayload, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
             if (payload == null || payload.Issue == null) return Result.Success;
 
             string webhookEvent = payload.WebhookEvent;
@@ -102,9 +106,10 @@ public class ProcessJiraWebhookCommandHandler : IRequestHandler<ProcessJiraWebho
             }
             else if (webhookEvent == "jira:issue_updated" && story != null)
             {
-                story.UpdateFromJiraWebhook(title, story.AcceptanceCriteria, mappedStatus);
+                var description = ExtractDescription(payload.Issue.Fields.Description) ?? story.AcceptanceCriteria;
+                story.UpdateFromJiraWebhook(title, description, mappedStatus);
             }
-            else if (webhookEvent == "jira:issue_created" && story == null)
+            else if ((webhookEvent == "jira:issue_created" || webhookEvent == "jira:issue_updated") && story == null)
             {
                 // Fetch the fallback category for new Jira stories
                 var categories = await _categoryRepository.ListAsync(new CategoriesByTenantSpec(tenant.Id), cancellationToken);
@@ -112,8 +117,9 @@ public class ProcessJiraWebhookCommandHandler : IRequestHandler<ProcessJiraWebho
 
                 if (fallbackCategory != null)
                 {
-                    story = new UserStory(tenant.Id, fallbackCategory.Id, UserStorySource.Jira, title, "", ticketKey);
-                    story.UpdateFromJiraWebhook(title, "", mappedStatus);
+                    var description = ExtractDescription(payload.Issue.Fields.Description) ?? "";
+                    story = new UserStory(tenant.Id, fallbackCategory.Id, UserStorySource.Jira, title, description, ticketKey);
+                    story.UpdateFromJiraWebhook(title, description, mappedStatus);
                     await _userStoryRepository.AddAsync(story, cancellationToken);
                 }
             }
@@ -129,4 +135,54 @@ public class ProcessJiraWebhookCommandHandler : IRequestHandler<ProcessJiraWebho
         return Result.Success;
     }
 
+    private string? ExtractDescription(JsonElement? descriptionElement)
+    {
+        if (descriptionElement == null || descriptionElement.Value.ValueKind == JsonValueKind.Null)
+            return null;
+
+        if (descriptionElement.Value.ValueKind == JsonValueKind.String)
+            return descriptionElement.Value.GetString();
+
+        if (descriptionElement.Value.ValueKind == JsonValueKind.Object)
+        {
+            try
+            {
+                var sb = new StringBuilder();
+                ExtractAdfText(descriptionElement.Value, sb);
+                return sb.ToString().Trim();
+            }
+            catch
+            {
+                return descriptionElement.Value.GetRawText(); // Fallback
+            }
+        }
+
+        return null;
+    }
+
+    private void ExtractAdfText(JsonElement element, StringBuilder sb)
+    {
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            if (element.TryGetProperty("type", out var typeProp) && typeProp.GetString() == "text")
+            {
+                if (element.TryGetProperty("text", out var textProp))
+                {
+                    sb.Append(textProp.GetString());
+                }
+            }
+
+            if (element.TryGetProperty("content", out var contentProp) && contentProp.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var child in contentProp.EnumerateArray())
+                {
+                    ExtractAdfText(child, sb);
+                }
+                if (element.TryGetProperty("type", out typeProp) && typeProp.GetString() == "paragraph")
+                {
+                    sb.AppendLine();
+                }
+            }
+        }
+    }
 }

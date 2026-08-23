@@ -1,7 +1,9 @@
 using System;
 using FeedInsight.Application.Common.Interfaces;
 using FeedInsight.Application.Features.AI.RouterAgent;
+using FeedInsight.Application.Features.AI.TriageAgent;
 using FeedInsight.Infrastructure.AI.RouterAgent;
+using FeedInsight.Infrastructure.AI.TriageAgent;
 using FeedInsight.Infrastructure.Options;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -14,6 +16,7 @@ public static class SemanticKernelExtensions
     public static IServiceCollection AddSemanticKernelAgents(this IServiceCollection services)
     {
         services.AddScoped<IRouterAgentService, RouterAgentService>();
+        services.AddScoped<ITriageAgentService, TriageAgentService>();
 
         services.AddTransient<Kernel>(sp =>
         {

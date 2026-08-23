@@ -34,7 +34,11 @@ public class JwtTokenGenerator : IJwtTokenGenerator
         {
             claims.Add(new Claim("tenantId", user.TenantId.Value.ToString()));
         }
-
+        if (user.Tenant is not null)
+        {
+            claims.Add(new Claim(
+                "companyType", user.Tenant.CompanyType.ToString()));
+        }
         foreach (var userRole in user.UserRoles)
         {
             if (userRole.Role != null)

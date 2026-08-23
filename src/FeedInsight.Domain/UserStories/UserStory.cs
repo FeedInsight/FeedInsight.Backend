@@ -1,3 +1,4 @@
+using FeedInsight.Domain.Categories;
 using FeedInsight.Domain.Common.Models;
 using FeedInsight.Domain.UserStories.Enums;
 using FeedInsight.Domain.UserStories.Events;
@@ -9,6 +10,7 @@ public class UserStory : Entity
     public Guid TenantId { get; private set; }
 
     public Guid CategoryId { get; private set; }
+    public Category? Category { get; private set; }
 
     public UserStorySource Source { get; private set; }
 
@@ -54,6 +56,30 @@ public class UserStory : Entity
         AcceptanceCriteria = acceptanceCriteria;
         Status = status;
 
+        AddDomainEvent(new UserStoryUpdatedEvent(TenantId, Id));
+    }
+
+    public void UpdateCategory(Guid categoryId)
+    {
+        CategoryId = categoryId;
+        // No domain event is added here to avoid recursive event handling. 
+        // This is primarily updated by AI handlers.
+    }
+
+    public void MarkAsSyncedToJira(string jiraTicketKey)
+    {
+        JiraTicketKey = jiraTicketKey;
+        Status = UserStoryStatus.Synced;
+        AddDomainEvent(new UserStoryUpdatedEvent(TenantId, Id));
+    }
+
+    public void UpdateDetails(string title, string? acceptanceCriteria)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+            throw new ArgumentException("Title cannot be empty.");
+
+        Title = title;
+        AcceptanceCriteria = acceptanceCriteria;
         AddDomainEvent(new UserStoryUpdatedEvent(TenantId, Id));
     }
 
