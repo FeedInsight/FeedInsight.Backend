@@ -1,5 +1,6 @@
 ﻿using FeedInsight.Application.Features.Users.Commands.ChangePassword;
 using FeedInsight.Application.Features.Users.Commands.UpdateProfile;
+using FeedInsight.Application.Features.Users.Queries.GetProfile;
 using FeedInsight.Application.Messaging;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -37,5 +38,16 @@ public class ProfileController : ApiController
             success => OkResponse(new { Message = "Password changed successfully. All other sessions have been logged out." }),
             errors => Problem(errors)
         );
+    }
+
+    [HttpGet("me")]
+    public async Task<IActionResult> GetProfile()
+    {
+        var result = await _mediator.SendAsync(
+            new GetProfileQuery());
+
+        return result.Match(
+            profile => OkResponse(profile),
+            errors => Problem(errors));
     }
 }
