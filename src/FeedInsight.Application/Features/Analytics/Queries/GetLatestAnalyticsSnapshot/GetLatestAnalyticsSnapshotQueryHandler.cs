@@ -1,34 +1,26 @@
 ﻿using ErrorOr;
 using FeedInsight.Application.Common.Interfaces;
 using FeedInsight.Application.Features.Analytics.DTOs;
-
-using FeedInsight.Application.Features.Analytics.Queries.Specifications;
-
 using FeedInsight.Application.Messaging;
-
 using FeedInsight.Domain.Common.Errors;
-using FeedInsight.Domain.DailyAnalyticsSnapshot;
 using FeedInsight.Domain.Users;
 
 namespace FeedInsight.Application.Features.Analytics.Queries.GetLatestAnalyticsSnapshot;
 
-public class GetLatestAnalyticsSnapshotQueryHandler
-    : IRequestHandler<
-        GetLatestAnalyticsSnapshotQuery,
-        ErrorOr<AnalyticsSnapshotDto>>
+public class GetLatestAnalyticsSnapshotQueryHandler: IRequestHandler< GetLatestAnalyticsSnapshotQuery,ErrorOr<AnalyticsSnapshotDto>>
 {
     private readonly ICurrentUserService _currentUserService;
     private readonly IRepository<User> _userRepository;
-    private readonly IRepository<DailyAnalyticsSnapshot> _snapshotRepository;
+    private readonly IAnalyticsSnapshotService _analyticsSnapshotService;
 
     public GetLatestAnalyticsSnapshotQueryHandler(
         ICurrentUserService currentUserService,
         IRepository<User> userRepository,
-        IRepository<DailyAnalyticsSnapshot> snapshotRepository)
+        IAnalyticsSnapshotService analyticsSnapshotService)
     {
         _currentUserService = currentUserService;
         _userRepository = userRepository;
-        _snapshotRepository = snapshotRepository;
+        _analyticsSnapshotService = analyticsSnapshotService;
     }
 
     public async Task<ErrorOr<AnalyticsSnapshotDto>> HandleAsync(
@@ -45,22 +37,24 @@ public class GetLatestAnalyticsSnapshotQueryHandler
         if (user is null || user.TenantId is null)
             return Errors.Users.NotAssociatedWithTenant;
 
-        var snapshot =
-            await _snapshotRepository.SingleOrDefaultAsync(
-                new LatestAnalyticsSnapshotSpec(user.TenantId.Value),
+        var snapshotDate =
+            DateOnly.FromDateTime(DateTime.UtcNow);
+
+        var analytics =
+            await _analyticsSnapshotService.GenerateSnapshotAsync(
+                user.TenantId.Value,
+                snapshotDate,
                 cancellationToken);
 
-      
-
         return new AnalyticsSnapshotDto(
-            snapshot.SnapshotDate,
-            snapshot.TotalFeedbacksReceived,
-            snapshot.PositiveSentimentCount,
-            snapshot.NeutralSentimentCount,
-            snapshot.NegativeSentimentCount,
-            snapshot.TotalTasksExtracted,
-            snapshot.DraftTicketsGenerated,
-            snapshot.PoApprovalRatePercent,
-            snapshot.TopRequestedFeaturesJson);
+            analytics.SnapshotDate,
+            analytics.TotalFeedbacksReceived,
+            analytics.PositiveSentimentCount,
+            analytics.NeutralSentimentCount,
+            analytics.NegativeSentimentCount,
+            analytics.TotalTasksExtracted,
+            analytics.DraftTicketsGenerated,
+            analytics.PoApprovalRatePercent,
+            analytics.TopRequestedFeaturesJson);
     }
 }
