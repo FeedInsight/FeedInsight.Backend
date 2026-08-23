@@ -5,6 +5,7 @@ using FeedInsight.Application.Features.Tenants.Commands.RevokeApiKey;
 using FeedInsight.Application.Features.Tenants.Commands.ToggleTenantStatus;
 using FeedInsight.Application.Features.Tenants.Commands.UpdateTenant;
 using FeedInsight.Application.Features.Tenants.Queries.GetApiKeys;
+using FeedInsight.Application.Features.Tenants.Queries.GetJiraIntegration;
 using FeedInsight.Application.Features.Tenants.Queries.GetTenants;
 using FeedInsight.Application.Messaging;
 using FeedInsight.Domain.Tenants.Enums;
@@ -136,5 +137,16 @@ public class TenantsController : ApiController
             }),
             errors => Problem(errors)
         );
+    }
+
+    [HttpGet("jira")]
+    public async Task<IActionResult> GetJiraIntegration()
+    {
+        var result = await _mediator.SendAsync(
+            new GetJiraIntegrationQuery());
+
+        return result.Match(
+            integration => OkResponse(integration),
+            errors => Problem(errors));
     }
 }
