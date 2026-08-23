@@ -17,11 +17,11 @@ The backend is built with **.NET (C#)** and adheres to the **CQRS** (Command Que
 
 ### High-Level Design
 The system integrates with external services (Jira Cloud, OpenAI, Qdrant) via a robust infrastructure layer, driven by ASP.NET Core Hosted Services.
-![High Level Design](docs/images/high-level-design.png)
+![High Level Design](docs/images/high-level-design.jpeg)
 
 ### Core Components
 The architecture is divided into distinct layers (Presentation, Application, Domain, Infrastructure).
-![Architecture Overview](docs/images/architecture.png)
+![Architecture Overview](docs/images/architecture.jpeg)
 
 ### Background Processing
 The system relies on asynchronous background processing to handle expensive operations without blocking the API.
